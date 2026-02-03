@@ -14,14 +14,15 @@
 #  limitations under the License.
 #
 
-
+import numpy as np
 from abc import ABC, abstractmethod
 from aic_control_interfaces.msg import MotionUpdate, TrajectoryGenerationMode
 from aic_model_interfaces.msg import Observation
 from aic_task_interfaces.msg import Task
 from geometry_msgs.msg import Point, Pose, Quaternion, Wrench, Vector3
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 from typing import Callable, Protocol
-import numpy as np
 
 
 GetObservationCallback = Callable[[], Observation]
@@ -38,6 +39,8 @@ class PolicyRos(ABC):
     def __init__(self, parent_node):
         self._parent_node = parent_node
         self.get_logger().info("PolicyRos.__init__()")
+        self._tf_buffer = Buffer()
+        self._tf_listener = TransformListener(self._tf_buffer, self._parent_node)
 
     def get_logger(self):
         return self._parent_node.get_logger()
