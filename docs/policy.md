@@ -88,5 +88,5 @@ ros2 run aic_model aic_model --ros-args -p policy:=aic_example_policies.ros.Chea
 
 To give `CheatCode.py` a goal so that it starts moving:
 ```
-src/aic_model/test/create_and_cancel_task.py
+src/aic/aic_model/test/create_and_cancel_task.py
 ```
