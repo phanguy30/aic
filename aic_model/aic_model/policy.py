@@ -18,10 +18,9 @@ import time
 
 import numpy as np
 from abc import ABC, abstractmethod
-from aic_control_interfaces.msg import MotionUpdate, TrajectoryGenerationMode
+from aic_control_interfaces.msg import JointMotionUpdate, MotionUpdate
 from aic_model_interfaces.msg import Observation
 from aic_task_interfaces.msg import Task
-from geometry_msgs.msg import Point, Pose, Quaternion, Wrench, Vector3
 from rclpy.duration import Duration
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -31,8 +30,12 @@ from typing import Callable, Protocol
 GetObservationCallback = Callable[[], Observation]
 
 
-class SetPoseTargetCallback(Protocol):
-    def __call__(self, pose: Pose, frame_id: str = "base_link") -> None: ...
+class MoveRobotCallback(Protocol):
+    def __call__(
+        self,
+        motion_update: MotionUpdate = None,
+        joint_motion_update: JointMotionUpdate = None,
+    ) -> None: ...
 
 
 SendFeedbackCallback = Callable[[str], None]
@@ -62,7 +65,7 @@ class Policy(ABC):
         self,
         task: Task,
         get_observation: GetObservationCallback,
-        set_pose_target: SetPoseTargetCallback,
+        move_robot: MoveRobotCallback,
         send_feedback: SendFeedbackCallback,
     ) -> bool:
         """Called when the insert_cable task is requested by aic_engine"""

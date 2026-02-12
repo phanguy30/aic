@@ -186,6 +186,12 @@ class AicModel(LifecycleNode):
     def observation_callable(self):
         return self._observation_msg
 
+    def move_robot(self, motion_update: None, joint_motion_update: None):
+        """Set a motion target for the robot."""
+        motion_update_msg = MotionUpdate()
+        motion_update.pose = pose
+        motion_update.header.frame_id = "base_link"
+
     def set_pose_target(self, pose: Pose, frame_id: str = "base_link"):
         """Set a pose target for the robot arm.
 
@@ -238,8 +244,8 @@ class AicModel(LifecycleNode):
         self._action_thread_result = self._policy.insert_cable(
             task=goal_handle.request.task,
             get_observation=lambda: self.observation_callable(),
-            set_pose_target=lambda pose, frame_id="base_link": self.set_pose_target(
-                pose, frame_id
+            move_robot=lambda motion_update=None, joint_motion_update=None: self.move_robot(
+                motion_update, joint_motion_update
             ),
             send_feedback=lambda feedback: self.send_feedback(goal_handle, feedback),
         )
