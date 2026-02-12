@@ -19,8 +19,8 @@ import time
 from aic_control_interfaces.msg import JointMotionUpdate
 from aic_control_interfaces.msg import TrajectoryGenerationMode
 from aic_control_interfaces.srv import ChangeTargetMode
-from aic_model.policy_ros import (
-    PolicyRos,
+from aic_model.policy import (
+    Policy,
     GetObservationCallback,
     SetPoseTargetCallback,
     SendFeedbackCallback,
@@ -28,19 +28,19 @@ from aic_model.policy_ros import (
 from aic_task_interfaces.msg import Task
 
 
-class BoardCrasher(PolicyRos):
-    """Policy that uses joint-space control to push the robot wrist
-    into the task board, triggering off-limit contact detection.
+class WallPresser(Policy):
+    """Policy that presses the arm into an enclosure wall using
+    joint-space control to trigger the Tier 2 insertion force penalty.
 
-    The wrist is rotated so the gripper fingers point up (wrist_1 ≈ 1.45),
-    keeping the cable tip away from the board surface.  The shoulder is
-    then lowered (shoulder_lift ≈ -2.5) to press the wrist_1 link into
-    the task board.
+    The arm is rotated to one side and alternated between a retracted
+    and an extended position with high stiffness, pressing the forearm
+    into the wall panel.  The sustained contact force exceeds the F/T
+    sensor threshold for long enough to trigger the penalty.
     """
 
     def __init__(self, parent_node):
         super().__init__(parent_node)
-        self.get_logger().info("BoardCrasher.__init__()")
+        self.get_logger().info("WallPresser.__init__()")
 
     def _switch_target_mode(self, mode):
         """Switch controller between Cartesian (0) and Joint (1) mode."""
@@ -64,7 +64,7 @@ class BoardCrasher(PolicyRos):
         msg = JointMotionUpdate()
         msg.target_state.positions = list(positions)
         msg.target_stiffness = list(
-            stiffness or [200.0, 200.0, 200.0, 50.0, 50.0, 50.0]
+            stiffness or [300.0, 300.0, 300.0, 50.0, 50.0, 50.0]
         )
         msg.target_damping = list(damping or [40.0, 40.0, 40.0, 15.0, 15.0, 15.0])
         msg.trajectory_generation_mode.mode = TrajectoryGenerationMode.MODE_POSITION
@@ -77,8 +77,8 @@ class BoardCrasher(PolicyRos):
         set_pose_target: SetPoseTargetCallback,
         send_feedback: SendFeedbackCallback,
     ):
-        self.get_logger().info("BoardCrasher.insert_cable() enter")
-        send_feedback("triggering off-limit contacts via joint control")
+        self.get_logger().info("WallPresser.insert_cable() enter")
+        send_feedback("pressing the enclosure wall to trigger force penalty")
 
         # Switch to joint target mode
         self.get_logger().info("Switching to joint target mode")
@@ -86,32 +86,34 @@ class BoardCrasher(PolicyRos):
             self.get_logger().error("Failed to switch to joint mode")
             return True
 
-        # Home: [-0.16, -1.35, -1.66, -1.69, 1.57, 1.41]
         # Joints: [shoulder_pan, shoulder_lift, elbow, wrist_1, wrist_2, wrist_3]
+        # Home:   [-0.16,        -1.35,         -1.66, -1.69,   1.57,    1.41]
         #
-        # Strategy: rotate wrist so fingers point up (wrist_1 = 1.45),
-        # rotate shoulder_pan toward the board (-0.6), then lower
-        # shoulder_lift to -2.5 to press wrist_1_link into the board.
-        # Verified: triggers ur5e::wrist_1_link vs task_board contacts.
+        # Strategy: rotate shoulder_pan to face the opposite side from
+        # WallToucher (-1.57 instead of +1.57), then extend the arm to
+        # press the forearm into the enclosure wall.  The enclosure
+        # walls are ~0.71 m from center; the UR5e reach is ~0.85 m.
+        # This reliably generates sustained force at the F/T sensor
+        # without destabilizing the physics engine.
 
         high_stiffness = [300.0, 300.0, 300.0, 50.0, 50.0, 50.0]
 
-        # Fingers-up configuration above the board
-        above_board = [-0.6, -1.35, -1.66, 1.45, 1.57, 1.41]
-        # Same but with shoulder lowered to press into the board
-        into_board = [-0.6, -2.5, -1.66, 1.45, 1.57, 1.41]
+        # Retracted: arm rotated to the left side, folded
+        retracted = [-1.57, -1.35, -1.66, -1.69, 1.57, 1.41]
+        # Extended: arm stretched toward the left wall
+        extended = [-1.57, -0.5, 0.0, -1.69, 1.57, 1.41]
 
         for cycle in range(3):
-            # Position above the task board with fingers up
-            self.get_logger().info(f"Cycle {cycle + 1}: positioning above board")
+            # Retract
+            self.get_logger().info(f"Cycle {cycle + 1}: retracting")
             for _ in range(30):
-                self._publish_joint_command(above_board)
+                self._publish_joint_command(retracted)
                 time.sleep(0.1)
 
-            # Lower shoulder to push wrist into the board
-            self.get_logger().info(f"Cycle {cycle + 1}: pushing wrist into board")
+            # Push into the wall and hold
+            self.get_logger().info(f"Cycle {cycle + 1}: pushing into wall")
             for _ in range(50):
-                self._publish_joint_command(into_board, stiffness=high_stiffness)
+                self._publish_joint_command(extended, stiffness=high_stiffness)
                 time.sleep(0.1)
 
         # Return to home position
@@ -125,5 +127,5 @@ class BoardCrasher(PolicyRos):
         self.get_logger().info("Switching back to Cartesian mode")
         self._switch_target_mode(ChangeTargetMode.Request.TARGET_MODE_CARTESIAN)
 
-        self.get_logger().info("BoardCrasher.insert_cable() exiting...")
+        self.get_logger().info("WallPresser.insert_cable() exiting...")
         return True

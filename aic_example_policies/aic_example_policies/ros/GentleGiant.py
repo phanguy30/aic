@@ -19,8 +19,8 @@ import time
 from aic_control_interfaces.msg import JointMotionUpdate
 from aic_control_interfaces.msg import TrajectoryGenerationMode
 from aic_control_interfaces.srv import ChangeTargetMode
-from aic_model.policy_ros import (
-    PolicyRos,
+from aic_model.policy import (
+    Policy,
     GetObservationCallback,
     SetPoseTargetCallback,
     SendFeedbackCallback,
@@ -28,7 +28,7 @@ from aic_model.policy_ros import (
 from aic_task_interfaces.msg import Task
 
 
-class GentleGiant(PolicyRos):
+class GentleGiant(Policy):
     """Policy that moves the arm slowly and smoothly using low stiffness
     and high damping, producing minimal jerk (high Tier 2 jerk score)."""
 

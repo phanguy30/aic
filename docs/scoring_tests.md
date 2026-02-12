@@ -143,29 +143,26 @@ ros2 launch aic_bringup aic_gz_bringup.launch.py \
 
 ## Example 4: Off-Limit Contact
 
-**Goal:** Run the `BoardCrasher` policy through the engine. This policy uses
-joint-space control to rotate the wrist (fingers pointing up) and lower the
-shoulder, pressing the `wrist_1_link` / `forearm_link` into the task board.
-The off-limit contact penalty should appear in the scoring output.
+**Goal:** Run the `WallToucher` policy through the engine. This policy uses
+joint-space control to extend the arm sideways, touching the forearm against an
+enclosure wall panel. The off-limit contact penalty should appear in the
+scoring output.
 
 **Expected outcome:**
 - All 3 trials complete.
 - Tier 1 should **pass** for all trials.
-- Tier 2 should show an off-limit contacts penalty for at least one trial
-  where a robot link (e.g. `forearm_link`) collided with the task board.
-  Not every trial may trigger a contact — the board position varies per trial.
+- Tier 2 should show an off-limit contacts penalty for all trials where a
+  robot link (e.g. `forearm_link`) collided with the enclosure wall.
 - Tier 3 should report failed cable insertion for all trials.
 
 > **Note — Off-limit contacts:** "Off-limit" models are surfaces the robot must
-> not touch during the task. The `OffLimitContactsPlugin` monitors two models:
+> not touch during the task. The `OffLimitContactsPlugin` monitors three models:
 >
 > | Model | What it includes |
 > |-------|-----------------|
 > | `enclosure` | Floor, corner posts, and ceiling (the structural frame) |
+> | `enclosure walls` | Transparent acrylic panels surrounding the workspace |
 > | `task_board` | The board and everything mounted on it (NIC card mounts, SC ports, etc.) |
->
-> The `enclosure_walls` model (transparent acrylic panels) is **not** in the
-> off-limit list, so brushing against a wall does not incur a penalty.
 >
 > Only contacts where one side is a **robot link** are penalized. The cable is a
 > separate Gazebo model and is not expected to trigger the penalty.
@@ -176,16 +173,16 @@ The off-limit contact penalty should appear in the scoring output.
 ros2 run rmw_zenoh_cpp rmw_zenohd
 ```
 
-### Terminal 1 -- AIC Model (BoardCrasher)
+### Terminal 1 -- AIC Model (WallToucher)
 
 ```bash
-ros2 run aic_model aic_model --ros-args -p policy:=aic_example_policies.ros.BoardCrasher
+ros2 run aic_model aic_model --ros-args -p policy:=aic_example_policies.ros.WallToucher
 ```
 
 ### Terminal 2 -- Simulation + Engine
 
 ```bash
-AIC_RESULTS_DIR=~/aic_results/board_crasher \
+AIC_RESULTS_DIR=~/aic_results/wall_toucher \
 ros2 launch aic_bringup aic_gz_bringup.launch.py \
   ground_truth:=true \
   start_aic_engine:=true
@@ -195,15 +192,16 @@ ros2 launch aic_bringup aic_gz_bringup.launch.py \
 
 ## Example 5: Excessive Force
 
-**Goal:** Run the `Jackhammer` policy through the engine. This policy repeatedly
-hammers the gripper up and down against the task board using high stiffness,
-triggering the Tier 2 insertion force penalty.
+**Goal:** Run the `WallPresser` policy through the engine. This policy uses
+joint-space control to press the forearm into an enclosure wall with high
+stiffness, generating sustained contact forces that trigger the Tier 2
+insertion force penalty.
 
 **Expected outcome:**
 - All 3 trials complete.
 - Tier 1 should **pass** for all trials.
-- Tier 2 should show an insertion force penalty for trials where force
-  exceeded the threshold.
+- Tier 2 should show an insertion force penalty for all trials. Off-limit
+  contacts may also appear as a side effect of the wall contact.
 - Tier 3 should report failed cable insertion for all trials.
 
 ### Terminal 0 -- Zenoh Router
@@ -212,16 +210,16 @@ triggering the Tier 2 insertion force penalty.
 ros2 run rmw_zenoh_cpp rmw_zenohd
 ```
 
-### Terminal 1 -- AIC Model (Jackhammer)
+### Terminal 1 -- AIC Model (WallPresser)
 
 ```bash
-ros2 run aic_model aic_model --ros-args -p policy:=aic_example_policies.ros.Jackhammer
+ros2 run aic_model aic_model --ros-args -p policy:=aic_example_policies.ros.WallPresser
 ```
 
 ### Terminal 2 -- Simulation + Engine
 
 ```bash
-AIC_RESULTS_DIR=~/aic_results/jackhammer \
+AIC_RESULTS_DIR=~/aic_results/wall_presser \
 ros2 launch aic_bringup aic_gz_bringup.launch.py \
   ground_truth:=true \
   start_aic_engine:=true
@@ -275,10 +273,16 @@ producing aggressive motion that triggers the insertion force penalty.
 **Expected outcome:**
 - All 3 trials complete.
 - Tier 1 should **pass** for all trials.
-- Tier 2 should show lower jerk scores than Example 6 (`GentleGiant`) due to
-  aggressive motion. The arm should visibly snap between positions and may
-  oscillate.
+- Tier 2 should show an insertion force penalty for all trials. The arm
+  oscillates aggressively due to low damping, generating sustained force at
+  the F/T sensor. The arm should visibly snap between positions.
 - Tier 3 should report failed cable insertion for all trials.
+
+> **Known limitation — jerk score:** The jerk metric averages the jerk
+> **vector** over time, so positive/negative contributions cancel out and
+> stillness dilutes the result. SpeedDemon and GentleGiant produce similar
+> jerk scores (~20) despite different motion profiles. The two policies are
+> differentiated by the **insertion force penalty** instead.
 
 ### Terminal 0 -- Zenoh Router
 
