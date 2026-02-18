@@ -7,7 +7,7 @@ RUN curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyri
 # Install dependencies
 RUN mkdir -p /ws_aic/src/aic
 COPY --chmod=644 aic.repos /ws_aic/src/aic/
-COPY --chmod=u=rwX,go=rX --parents **/package.xml /ws_aic/src/aic
+COPY --chmod=755 --parents **/package.xml /ws_aic/src/aic
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked \
   apt update && apt upgrade -y && \
   # undeclared deps
