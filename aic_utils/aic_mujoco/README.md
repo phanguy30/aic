@@ -4,7 +4,7 @@ This package provides documentation, scripts, and utilities for training policie
 
 ## Overview
 
-MuJoCo (Multi-Joint dynamics with Contact) is a physics engine designed for research and development in robotics, biomechanics, graphics and animation. In collaboration with **Google DeepMind**, this integration enables participants to:
+[MuJoCo](https://mujoco.org/) is a physics engine designed for research and development in robotics, biomechanics, graphics and animation. In collaboration with **Google DeepMind**, this integration enables participants to:
 
 - Convert Gazebo SDF worlds to MuJoCo MJCF format using `sdformat_mjcf`
 - Load the AIC task board and robot from exported Gazebo worlds (`/tmp/aic.sdf`)
@@ -28,7 +28,7 @@ MuJoCo (Multi-Joint dynamics with Contact) is a physics engine designed for rese
 - **ROS 2:** ROS 2 Kilted Kaiju
 - **Existing AIC Workspace:** Follow the [Getting Started](../../docs/getting_started.md) guide to set up your base workspace
 
-> **Note:** MuJoCo integration requires a native Ubuntu 24.04 installation with ROS 2 built from source or installed via apt. The pixi-based workflow does not support the necessary ROS 2 Control packages.
+> **Note:** MuJoCo integration requires a native Ubuntu 24.04 installation with ROS 2 built from source or installed via apt. The pixi-based workflow does not support the necessary ROS 2 Control packages but the converted scene may be opened in MuJoCo installed in the pixi environment (via drag-and-drop or Python script - see [Loading in MuJoCo](#loading-in-mujoco)).
 
 ## Installation
 
@@ -174,13 +174,36 @@ These refinements will be automated in future releases.
 
 ### Loading in MuJoCo
 
-```bash
-# Open in MuJoCo viewer
-python -m mujoco.viewer ~/aic_mujoco_world/scene.xml
+#### Using pixi environment
 
-# Or use MuJoCo simulate binary
+The Python viewer starts in **paused mode by default**. Press Space to start/pause simulation.
+
+```bash
+# Enter pixi shell
+pixi shell
+
+# Option 1: Launch empty viewer (then drag and drop scene.xml into the window)
+python -m mujoco.viewer
+
+# Option 2: Use the provided convenience script (starts paused)
+python src/aic/aic_utils/aic_mujoco/scripts/view_scene.py ~/aic_mujoco_world/scene.xml
+
+# Option 3: Use a one-liner Python command (paused mode)
+python -c "import mujoco, mujoco.viewer; m = mujoco.MjModel.from_xml_path('~/aic_mujoco_world/scene.xml'); d = mujoco.MjData(m); v = mujoco.viewer.launch_passive(m, d); v.sync(); exec('while v.is_running(): v.sync()')"
+```
+
+> **Tip:** Press Space in the viewer to start/pause simulation, Backspace to reset.
+
+#### Using native ROS 2 workspace
+
+The `simulate` binary (from `mujoco_vendor`) can load scenes directly from command line and starts **paused by default**:
+
+```bash
+# Load scene (paused by default)
 simulate ~/aic_mujoco_world/scene.xml
 ```
+
+> **Tip:** Press Space to start/pause simulation in the viewer.
 
 ## Training with MuJoCo
 
@@ -234,16 +257,3 @@ Planned improvements to automate the workflow:
 - [mujoco_ros2_control GitHub](https://github.com/ros-controls/mujoco_ros2_control)
 - [AIC Getting Started Guide](../../docs/getting_started.md)
 - [AIC Scene Description](../../docs/scene_description.md)
-
-## Contributing
-
-This is an experimental integration. Contributions, bug reports, and feedback are welcome. Please open issues in the main AIC repository.
-
-## Next Steps
-
-After setting up MuJoCo:
-1. Generate diverse training scenarios by varying launch parameters in Gazebo
-2. Export each configuration to different SDF files
-3. Load and train policies in MuJoCo
-4. Test your trained policy back in Gazebo for sim-to-sim validation
-5. Submit your containerized policy for evaluation
