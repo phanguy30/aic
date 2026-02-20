@@ -24,6 +24,7 @@
 #include <yaml-cpp/yaml.h>
 
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -346,7 +347,7 @@ namespace aic_scoring
     private: std::mutex mutex;
 
     /// \brief History of transforms for jerk computation (stores last 4 samples).
-    private: std::vector<TransformStampedMsg> tfHistory;
+    private: std::deque<TransformStampedMsg> tfHistory;
 
     /// \brief Computed linear jerk (x, y, z components in m/s^3).
     private: Vector3Msg linearJerk;

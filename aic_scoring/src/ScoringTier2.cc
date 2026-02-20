@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <deque>
 #include <iostream>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
@@ -118,7 +119,7 @@ bool ScoringTier2::StartRecording(const std::string &_filename,
               // A new cable transform was received
               this->cableTfReceived = true;
             } else if (topic.name == kTfTopic) {
-              // A new gripper  transform was received
+              // A new gripper transform was received
               this->gripperTfReceived = true;
             }
           }
@@ -462,16 +463,15 @@ std::optional<ScoringTier2::TransformStampedMsg> ScoringTier2::GetTransform(
     tf2::TimePoint _t, const std::string &_target_frame,
     const std::string &_reference_frame) const {
   std::string error;
-  if (!this->tf2_buffer->canTransform(_reference_frame, _target_frame, _t,
-                                      &error)) {
+  try {
+    return this->tf2_buffer->lookupTransform(_reference_frame, _target_frame, _t);
+  } catch (const tf2::TransformException &e) {
     RCLCPP_ERROR(
         this->node->get_logger(),
         "Transform between %s and %s not found in the tf tree, error: %s",
-        _reference_frame.c_str(), _target_frame.c_str(), error.c_str());
+        _reference_frame.c_str(), _target_frame.c_str(), e.what());
     return std::nullopt;
   }
-
-  return this->tf2_buffer->lookupTransform(_reference_frame, _target_frame, _t);
 }
 
 //////////////////////////////////////////////////
@@ -716,7 +716,7 @@ void ScoringTier2::JerkCallback(const TransformStampedMsg &_tf) {
 
   // Keep only last 4 samples.
   if (this->tfHistory.size() > 4) {
-    this->tfHistory.erase(this->tfHistory.begin());
+    this->tfHistory.pop_front();
   }
 
   // Extract timestamps.
