@@ -704,10 +704,11 @@ void ScoringTier2::JerkCallback(const TransformStampedMsg &_tf) {
     return static_cast<double>(t.sec) + static_cast<double>(t.nanosec) * 1e-9;
   };
 
+  double newTime = toSeconds(_tf.header.stamp);
+
   // Check timestamp is increasing.
   if (!this->tfHistory.empty()) {
     double lastTime = toSeconds(this->tfHistory.back().header.stamp);
-    double newTime = toSeconds(_tf.header.stamp);
     if (newTime <= lastTime) {
       return;
     }
@@ -726,62 +727,79 @@ void ScoringTier2::JerkCallback(const TransformStampedMsg &_tf) {
     this->tfHistory.pop_front();
   }
 
-  // Extract timestamps.
+  // Extract timestamps once.
   double t0 = toSeconds(this->tfHistory[0].header.stamp);
   double t1 = toSeconds(this->tfHistory[1].header.stamp);
   double t2 = toSeconds(this->tfHistory[2].header.stamp);
   double t3 = toSeconds(this->tfHistory[3].header.stamp);
 
-  // Extract positions.
-  double px[4], py[4], pz[4];
-  for (int i = 0; i < 4; ++i) {
-    px[i] = this->tfHistory[i].transform.translation.x;
-    py[i] = this->tfHistory[i].transform.translation.y;
-    pz[i] = this->tfHistory[i].transform.translation.z;
-  }
+  // Pre-compute time differences and their reciprocals (avoid repeated division).
+  double dt10 = t1 - t0;
+  double dt21 = t2 - t1;
+  double dt32 = t3 - t2;
+  double inv_dt10 = 1.0 / dt10;
+  double inv_dt21 = 1.0 / dt21;
+  double inv_dt32 = 1.0 / dt32;
 
-  // Compute finite differences for jerk.
-  // v1 = (p1 - p0) / (t1 - t0), etc.
-  // a1 = (v2 - v1) / (midpoint difference)
-  // jerk = (a2 - a1) / (midpoint difference)
-  auto computeJerk = [&](const double p[4]) {
-    double v1 = (p[1] - p[0]) / (t1 - t0);
-    double v2 = (p[2] - p[1]) / (t2 - t1);
-    double v3 = (p[3] - p[2]) / (t3 - t2);
+  // Pre-compute midpoints (used for all axes).
+  double mid_v1 = (t0 + t1) * 0.5;
+  double mid_v2 = (t1 + t2) * 0.5;
+  double mid_v3 = (t2 + t3) * 0.5;
+  double inv_mid_v2_v1 = 1.0 / (mid_v2 - mid_v1);
+  double inv_mid_v3_v2 = 1.0 / (mid_v3 - mid_v2);
 
-    double mid_v1 = (t0 + t1) / 2.0;
-    double mid_v2 = (t1 + t2) / 2.0;
-    double mid_v3 = (t2 + t3) / 2.0;
+  double mid_a1 = (mid_v1 + mid_v2) * 0.5;
+  double mid_a2 = (mid_v2 + mid_v3) * 0.5;
+  double inv_mid_a2_a1 = 1.0 / (mid_a2 - mid_a1);
 
-    double a1 = (v2 - v1) / (mid_v2 - mid_v1);
-    double a2 = (v3 - v2) / (mid_v3 - mid_v2);
+  // Compute jerk for all axes with precomputed multipliers.
+  auto computeJerk = [&](double p0, double p1, double p2, double p3) {
+    double v1 = (p1 - p0) * inv_dt10;
+    double v2 = (p2 - p1) * inv_dt21;
+    double v3 = (p3 - p2) * inv_dt32;
 
-    double mid_a1 = (mid_v1 + mid_v2) / 2.0;
-    double mid_a2 = (mid_v2 + mid_v3) / 2.0;
+    double a1 = (v2 - v1) * inv_mid_v2_v1;
+    double a2 = (v3 - v2) * inv_mid_v3_v2;
 
-    return (a2 - a1) / (mid_a2 - mid_a1);
+    return (a2 - a1) * inv_mid_a2_a1;
   };
 
-  // Compute linear jerk.
-  this->linearJerk.x = computeJerk(px);
-  this->linearJerk.y = computeJerk(py);
-  this->linearJerk.z = computeJerk(pz);
+  // Extract positions and compute jerk in one pass.
+  double px0 = this->tfHistory[0].transform.translation.x;
+  double px1 = this->tfHistory[1].transform.translation.x;
+  double px2 = this->tfHistory[2].transform.translation.x;
+  double px3 = this->tfHistory[3].transform.translation.x;
+
+  double py0 = this->tfHistory[0].transform.translation.y;
+  double py1 = this->tfHistory[1].transform.translation.y;
+  double py2 = this->tfHistory[2].transform.translation.y;
+  double py3 = this->tfHistory[3].transform.translation.y;
+
+  double pz0 = this->tfHistory[0].transform.translation.z;
+  double pz1 = this->tfHistory[1].transform.translation.z;
+  double pz2 = this->tfHistory[2].transform.translation.z;
+  double pz3 = this->tfHistory[3].transform.translation.z;
+
+  this->linearJerk.x = computeJerk(px0, px1, px2, px3);
+  this->linearJerk.y = computeJerk(py0, py1, py2, py3);
+  this->linearJerk.z = computeJerk(pz0, pz1, pz2, pz3);
 
   // Update time-weighted average jerk.
   // Use the time interval from t1 to t2 as the weight for this jerk sample.
-  double dt = t2 - t1;
+  double dt = dt21;
   this->totalJerkTime += dt;
 
-  // Accumulate weighted jerk.
+  // Accumulate weighted jerk (vectorized).
   this->accumLinearJerk.x += this->linearJerk.x * dt;
   this->accumLinearJerk.y += this->linearJerk.y * dt;
   this->accumLinearJerk.z += this->linearJerk.z * dt;
 
-  // Compute averages.
+  // Compute averages with check.
   if (this->totalJerkTime > 0.0) {
-    this->avgLinearJerk.x = this->accumLinearJerk.x / this->totalJerkTime;
-    this->avgLinearJerk.y = this->accumLinearJerk.y / this->totalJerkTime;
-    this->avgLinearJerk.z = this->accumLinearJerk.z / this->totalJerkTime;
+    double inv_totalJerkTime = 1.0 / this->totalJerkTime;
+    this->avgLinearJerk.x = this->accumLinearJerk.x * inv_totalJerkTime;
+    this->avgLinearJerk.y = this->accumLinearJerk.y * inv_totalJerkTime;
+    this->avgLinearJerk.z = this->accumLinearJerk.z * inv_totalJerkTime;
   }
 }
 
