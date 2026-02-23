@@ -25,6 +25,21 @@ Options for `--teleop.type` (and setting `--robot.teleop_target_mode` accordingl
 - `aic_spacemouse` for cartesian-space SpaceMouse control (and set `--robot.teleop_target_mode=cartesian`)
 - `aic_keyboard_joint` for joint-space control (and set `--robot.teleop_target_mode=joint`)
 
+Options for `--robot.teleop_frame_id` when `--robot.teleop_target_mode` is `cartesian`:
+- `base_link` to send cartesian targets with respect to the robot's base link.
+- `gripper/tcp` to send cartesian targets with respect to the `tcp` frame attached to the robot's gripper.
+
+As an example,
+```bash
+cd ~/ws_aic/src/aic
+pixi run lerobot-teleoperate \
+  --robot.type=aic_controller --robot.id=aic \
+  --teleop.type=aic_keyboard_ee --teleop.id=aic \
+  --robot.teleop_target_mode=cartesian --robot.teleop_frame_id=base_link \
+  --display_data=true
+```
+
+
 :warning: Note: In addition to setting `--teleop.type` you must set `--robot.teleop_target_mode` because the `AICRobotAICController` class needs to know which type of actions to send to the controller and it doesn't have access to `--teleop.type`.
 
 #### Cartesian space control
@@ -122,3 +137,19 @@ LeRobot recording keys:
 | ESC         | Stop recording   |
 
 <!-- TODO: lerobot-record doesn't load the hil processor to handle teleop events (lerobot bug?) -->
+
+### Training
+
+Once you have your LeRobot dataset, you can follow the [LeRobot tutorials](https://huggingface.co/docs/lerobot/en/index) for training.
+
+```bash
+cd ~/ws_aic/src/aic
+pixi run lerobot-train \
+  --dataset.repo_id=${HF_USER}/your_dataset \
+  --policy.type=your_policy_type \
+  --output_dir=outputs/train/act_your_dataset \
+  --job_name=act_your_dataset \
+  --policy.device=cuda \
+  --wandb.enable=true \
+  --policy.repo_id=${HF_USER}/act_policy
+```
