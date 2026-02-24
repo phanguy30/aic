@@ -85,7 +85,7 @@ class Policy(ABC):
 
     def sleep_for(self, duration_sec: float) -> None:
         """Sleep for the given duration using the node's clock (sim-time aware)."""
-        clock = self.get_clock().sleep_for(Duration(seconds=duration_sec))
+        self.get_clock().sleep_for(Duration(seconds=duration_sec))
 
     def set_pose_target(self, move_robot: MoveRobotCallback, pose: Pose):
         """Invoke the move_robot callback to request the supplied Pose.
