@@ -48,8 +48,12 @@
   # physics params
   cable_mass = 0.05
   segment_mass = cable_mass / segments
-  joint_damping = 1.0
-  joint_spring_stiffness = 0.05
+  # Damping and stiffiness aramters determine how much connected links in a
+  # cable can resist movement, i.e. how easily the cable can bend.
+  # Higher damping and stiffness values produce a more 'stiff' cable that
+  # resists bending
+  joint_damping = 0.2
+  joint_spring_stiffness = 0.0
 
   # visual params
   diffuse = '1.0 0.22 0.0'
