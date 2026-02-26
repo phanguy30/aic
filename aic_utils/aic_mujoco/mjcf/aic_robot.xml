@@ -265,8 +265,11 @@
     <general name="wrist_2_joint_motor" joint="wrist_2_joint"/>
     <general name="wrist_3_joint_motor" joint="wrist_3_joint"/>
     <general name="gripper/left_finger_joint_motor" joint="gripper/left_finger_joint"/>
-    <general name="gripper/right_finger_joint_motor" joint="gripper/right_finger_joint"/>
   </actuator>
+
+  <equality>
+    <joint joint1="gripper/left_finger_joint" joint2="gripper/right_finger_joint" polycoef="0 1 0 0 0"/>
+  </equality>
 
   <sensor>
     <force name="AtiForceTorqueSensor_force" site="AtiForceTorqueSensor"/>

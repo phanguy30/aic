@@ -5,6 +5,11 @@
 
   <xacro:macro name="robotiq_hande" params="name tf_prefix grip_pos_min grip_pos_max grip_vel_max grip_effort_min grip_effort_max initial_pos hardware_plugin:='gz_ros2_control/GazeboSimSystem'">
 
+    <!-- Conditional effort limits based on hardware_plugin -->
+    <xacro:property name="is_mujoco" value="${hardware_plugin == 'mujoco_ros2_control/MujocoSystem'}"/>
+    <xacro:property name="grip_effort_min" value="${2 if is_mujoco else 20}"/>
+    <xacro:property name="grip_effort_max" value="130"/>
+
     <xacro:robotiq_hande_ros2_control
       name="${name}"
       tf_prefix="${tf_prefix}"
