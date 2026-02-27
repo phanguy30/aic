@@ -251,11 +251,11 @@ def launch_setup(context, *args, **kwargs):
     #     ],
     # )
 
-    # fts_broadcaster_spawner = Node(
-    #     package="controller_manager",
-    #     executable="spawner",
-    #     arguments=["fts_broadcaster", "--controller-manager", "/controller_manager"],
-    # )
+    fts_broadcaster_spawner = Node(
+        package="controller_manager",
+        executable="spawner",
+        arguments=["fts_broadcaster", "--controller-manager", "/controller_manager"],
+    )
 
     # Start mujoco_ros2_control after robot_state_publisher
     delay_mujoco_after_robot_state_publisher = RegisterEventHandler(
@@ -279,7 +279,7 @@ def launch_setup(context, *args, **kwargs):
             on_exit=[
                 initial_joint_controller_spawner_started,
                 initial_joint_controller_spawner_stopped,
-                # fts_broadcaster_spawner,
+                fts_broadcaster_spawner,
                 # gripper_action_controller_spawner,
             ],
         )
