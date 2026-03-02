@@ -18,39 +18,55 @@ Table of Contents
    :maxdepth: 2 
    :caption: Challenge
 
-   source/challenge/overview
-   source/challenge/phases
-   source/challenge/qualification_phase
-   source/challenge/challenge_rules
-   source/challenge/scoring
-   source/challenge/score_test
+   Overview <source/overview>
+   Competition Phases <source/phases>
+   Qualification Phase <source/qualification_phase>
+   Scoring <source/scoring>
 
 
 .. toctree::
    :maxdepth: 2
-   :caption: Getting Started
+   :caption: Installation
    :titlesonly:
 
-   source/start/getting_started
-   source/start/quick_start
+   Getting Started <source/getting_started>
+   Build Locally <source/build_eval>
 
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Submission 
-
-   source/submission/guidelines
 
 .. toctree::
    :maxdepth: 2
    :caption: Technical Documentation
 
-   source/technical/toolkit_arch
-   source/technical/policy
-   source/technical/aic_interfaces
-   source/technical/aic_controller
-   source/technical/scene_description
-   source/technical/task_board_description
-   source/technical/troubleshooting
+   Scene Description <source/scene_description>
+   Task Board Description <source/task_board_description>
+   AIC ROS 2 Interfaces <source/aic_interfaces>
+   AIC Controller <source/aic_controller>
+   AIC Rules <source/challenge_rules>
+   Integrating a Policy <source/policy>
+   Troubleshooting <source/troubleshooting>
 
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Participant Utilities
+   
+   Participant Utilities <source/participant_utilities>
+   Example Policies <source/aic_example_policies>
  
+ 
+.. toctree::
+   :maxdepth: 2
+   :caption: Submission
+   
+   Guidelines <source/submission>
+   Access Control <source/access_control>
+   Custom Dockerfile <source/custom_dockerfile>
+   Scoring Tests <source/scoring_tests>
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference Materials
+   
+   Glossary <source/glossary>
+

@@ -1,4 +1,4 @@
-# Challenge Rules
+# AI for Industry Challenge: Rules and Technical Specifications
 
 ## 1. Competition Spirit
 The **AI for Industry Challenge (AIC)** is designed to foster creativity, technical excellence, and collaboration in solving real-world robotic manipulation tasks. We encourage participants to develop innovative solutions that demonstrate the capabilities of AI in industrial automation.
@@ -41,9 +41,7 @@ The evaluation platform includes automated access control and integrity checks. 
 2.  **Behavioral Verification:** Confirming model behavior during live evaluations adheres to the rules.
 3.  **Metric Analysis:** Cross-checking performance against expected baselines to detect anomalies.
 
-```{note}
-Teams found in violation of these rules face penalties, including disqualification and revocation of prizes.
-```
+> **Note:** Teams found in violation of these rules face penalties, including disqualification and revocation of prizes.
 
 ### Reporting Violations
 If you suspect another participant of violating these rules, please report it to the organizers through the official channels. Reports are treated confidentially.

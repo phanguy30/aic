@@ -5,7 +5,7 @@ in many contexts and can have differing meanings. The following diagram shows
 how these terms are used in the software blocks of the AI for Industry
 Challenge:
 
-![Block diagram](../_static/assets/technical/aic_policy_diagram.png)
+![Block diagram](./_static/assets/aic_policy_diagram.png)
 
 A _policy_ is the software which consumes sensor data and produces output
 commands to the robot. Creating a _policy_ is at the heart of the AI for
@@ -13,12 +13,12 @@ Industry Challenge, since it is the critical block that "closes the loop"
 between sensors and actuators.
 
 More specifically, the _policy_ can receive the following data at up to 20 Hz:
- * 📷 📷 📷images from three cameras mounted on the robot wrist
- * 🦾 joint angles of the robot arm and gripper
- * ⚖️ 3d force and 3d torque measurements at the robot wrist
- * 📐 target and actual poses of the gripper-fingers tool center
+ * :camera: :camera: :camera: images from three cameras mounted on the robot wrist
+ * :mechanical_arm: joint angles of the robot arm and gripper
+ * :balance_scale: 3d force and 3d torque measurements at the robot wrist
+ * :triangular_ruler: target and actual poses of the gripper-fingers tool center
    point (TCP)
- * ☄️ velocity of the gripper-fingers tool center point (TCP)
+ * :comet: velocity of the gripper-fingers tool center point (TCP)
 
 For convenience, the `aic_adapter` in the Challenge environment combines
 time-synchronized values of the sensor suite into a single composite
@@ -88,6 +88,7 @@ For this tutorial, we will be using [aic_model](../aic_model/README.md) to imple
 ### Create a new ROS 2 package
 
 ```bash
+# Run "pixi shell" to enter the pixi environment 
 (aic) $ ros2 pkg create my_policy_node --build-type ament_python
 ```
 
@@ -108,7 +109,7 @@ Add the following to `package.xml`:
 
 ### Create a pixi package
 
-Create a `pixi.toml` file with the following contents:
+Create a `pixi.toml` in the directory of the `my_policy_node` package with the following contents:
 
 ```toml
 [package.build.backend]
@@ -133,9 +134,8 @@ ros-kilted-aic-model-interfaces = { path = "../aic_interfaces/aic_model_interfac
 ros-kilted-aic-task-interfaces = { path = "../aic_interfaces/aic_task_interfaces" }
 ```
 
-```{tip}
-Normally, pixi will automatically discover the dependencies from `package.xml`. But because we are building the aic interfaces from source, we need to tell pixi where to find them.
-```
+> [!Tip]
+> Normally, pixi will automatically discover the dependencies from `package.xml`. But because we are building the aic interfaces from source, we need to tell pixi where to find them.
 
 ### Add the pixi package to the workspace
 
@@ -161,10 +161,9 @@ For brevity, we will reuse the code from `aic_example_policies`. See the [ROS Po
 
 Terminal 1:
 ```bash
+# Make sure to run 'export DBX_CONTAINER_MANAGER=docker'
 $ distrobox enter -r aic_eval -- /entrypoint.sh
 ```
-
-<!-- TODO: Update instruction to disable ACL after https://github.com/intrinsic-dev/aic/pull/190 or https://github.com/intrinsic-dev/aic/pull/171 is merged. -->
 
 Terminal 2:
 ```bash
@@ -172,9 +171,8 @@ $ pixi reinstall ros-kilted-my-policy-node
 $ pixi run ros2 run aic_model aic_model --ros-args -p use_sim_time:=true -p policy:=my_policy_node.WaveArm
 ```
 
-```{note}
-The command above runs the `aic_model` node, which then dynamically loads and runs your specific policy implementation (`my_policy_node.WaveArm`).
-```
+> [!Note]
+> The command above runs the `aic_model` node, which then dynamically loads and runs your specific policy implementation (`my_policy_node.WaveArm`).
 
 ### Dependency Management
 
@@ -195,7 +193,7 @@ $ pixi add ros-kilted-ros-core
 Unlike a native ROS workspace, a pixi workspace can mix ROS and pypi dependencies.
 
 ```bash
-$ pixi add --pypi pandas
+$ pixi add --pypi torch
 ```
 
 ##### Local dependencies
@@ -223,21 +221,20 @@ ros-kilted-my-policy-node = { path = "my_policy_node" }
 ros-kilted-my-local-dep = { path = "my_local_dep" }
 ```
 
-```{tip}
-pixi automatically prefixes a ROS package with `ros-<distro>-` and converts underscores to hyphens.
-```
+> [!Tip]
+> pixi automatically prefixes a ROS package with `ros-<distro>-` and converts underscores to hyphens.
 
 ### Build-Run-Debug Cycle (Python)
 
-pixi does not install your package in "editable" mode. Any changes you make will not be reflected until you reinstall the package.
+> [!IMPORTANT]
+> Changes to packages within a Pixi environment are not tracked automatically. To apply updates, you must `run pixi reinstall <package_name>`.
 
 ```bash
 $ pixi reinstall <package>
 ```
 
-```{tip}
-You may enter the pixi environment with `pixi shell` and force an "editable" install with `pip install -e`. But note that this circumvents pixi and may cause unintended side effects.
-```
+> [!Tip]
+> You may enter the pixi environment with `pixi shell` and force an "editable" install with `pip install -e`. But note that this circumvents pixi and may cause unintended side effects.
 
 ### Preparing for Submission
 

@@ -11,3 +11,5 @@ sphinx-multiversion
 pyyaml
 typeguard
 myst-parser
+click_extra
+pygments_ansi_color

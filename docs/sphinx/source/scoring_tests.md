@@ -156,19 +156,17 @@ scoring output.
 - Tier 3 should report 0 score for all trials (no insertion and plug outside of
   port proximity).
 
-```{note}
-**Off-limit contacts:** "Off-limit" models are surfaces the robot must
-not touch during the task. The `OffLimitContactsPlugin` monitors three models:
-
-| Model | What it includes |
-|-------|-----------------|
-| `enclosure` | Floor, corner posts, and ceiling (the structural frame) |
-| `enclosure walls` | Transparent acrylic panels surrounding the workspace |
-| `task_board` | The board and everything mounted on it (NIC card mounts, SC ports, etc.) |
-
-Only contacts where one side is a **robot link** are penalized. The cable is a
-separate Gazebo model and is not expected to trigger the penalty.
-```
+> **Note — Off-limit contacts:** "Off-limit" models are surfaces the robot must
+> not touch during the task. The `OffLimitContactsPlugin` monitors three models:
+>
+> | Model | What it includes |
+> |-------|-----------------|
+> | `enclosure` | Floor, corner posts, and ceiling (the structural frame) |
+> | `enclosure walls` | Transparent acrylic panels surrounding the workspace |
+> | `task_board` | The board and everything mounted on it (NIC card mounts, SC ports, etc.) |
+>
+> Only contacts where one side is a **robot link** are penalized. The cable is a
+> separate Gazebo model and is not expected to trigger the penalty.
 
 ### Terminal 0 -- Zenoh Router
 

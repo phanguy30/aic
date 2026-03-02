@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     "sphinx_multiversion",
+    "click_extra.sphinx"
 ]
 
 myst_enable_extensions = [
@@ -125,7 +126,7 @@ html_last_updated_fmt = "" # To reveal the build data in the pages meta
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are coped after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["source/_static/css"]
+html_static_path = ["source/_static/css", "source/_static/assets"]
 html_css_files = ["custom.css"]
 
 html_theme_options = {

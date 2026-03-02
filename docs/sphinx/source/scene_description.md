@@ -1,10 +1,9 @@
 # Scene Description
 
-![](../_static/assets/technical/aic_scene.png)
+![](./_static/assets/aic_scene.png)
 
-```{note}
-This guide assumes you've completed the [Getting Started](./getting_started.md) guide and have a running evaluation environment.
-```
+> [!NOTE]
+> This guide assumes you've completed the [Getting Started](./getting_started.md) guide and have a running evaluation environment.
 
 The simulation environment is defined in the [`aic_description`](./../aic_description) package and comprises a robot, a task board, and various objects required for the cable insertion task. All 3D models for the scene are stored in the [`aic_assets`](./../aic_assets) package.
 
@@ -38,9 +37,8 @@ The global simulation settings—including lighting, physics properties, and gen
 
 Now that you have the basic environment running, you can explore different configurations to understand the challenge better and create diverse training scenarios.
 
-```{tip}
-See this guide on how to [navigate the scene in Gazebo](https://gazebosim.org/docs/latest/gui/#the-scene).
-```
+> [!TIP]
+> See this guide on how to [navigate the scene in Gazebo](https://gazebosim.org/docs/latest/gui/#the-scene).
 
 ### Customizing the Environment
 
@@ -56,12 +54,11 @@ You can customize the simulation environment by passing parameters to the launch
 ros2 launch aic_bringup aic_gz_bringup.launch.py [parameters]
 ```
 
-```{tip}
-To check if your current terminal is inside the eval container:
-
-    echo $CONTAINER_ID  # Should output: aic_eval
-
-```
+> [!TIP]
+> To check if your current terminal is inside the eval container:
+> ```bash
+> echo $CONTAINER_ID  # Should output: aic_eval
+> ```
 
 ### Example: Custom Task Board Configuration
 
@@ -116,8 +113,6 @@ cp /tmp/aic.sdf ~/training_scenarios/sc_right_rotated.sdf
 
 ### Teleoperation
 
-To manually control the robot and get familiar with the environment:
-
 **Teleoperate the robot** in joint-space or Cartesian-space to:
 - Explore the workspace
 - Test cable insertion manually
@@ -130,9 +125,8 @@ See the [Robot Teleoperation Guide](../aic_utils/aic_teleoperation/README.md) fo
 
 When using teleoperation to collect training data, be sure to tare the Force/Torque sensors at the start of each training episode. See [Taring before Training](#Taring-before-training).
 
-```{tip}
-If the robot can't seem to move when it's near an object, it might be in collision with that object even though it's not touching. To view the collision mesh for an object, right-click on it, click `View >`, and then `Collisions`.
-```
+> [!TIP]
+> If the robot can't seem to move when it's near an object, it might be in collision with that object even though it's not touching. To view the collision mesh for an object, right-click on it, click `View >`, and then `Collisions`.
 
 ---
 
@@ -150,6 +144,9 @@ The simulation includes a world plugin that automatically exports the complete w
 - **Plugin Configuration:** Defined in [`aic.sdf`](../aic_description/world/aic.sdf) with parameters:
   - `<save_world_path>`: Path where the world file is saved (default: `/tmp/aic.sdf`)
   - `<save_world_delay_s>`: Delay in simulation seconds before exporting (default: `0.0`)
+
+> [!NOTE]
+> **MuJoCo Integration:** The AIC environment supports exporting and training policies natively in MuJoCo. Exported scenarios can be converted to MJCF format and run with the same ROS 2 control interfaces used in Gazebo. For detailed instructions on simulation setup, converting Gazebo worlds, and using `ros2_control` in MuJoCo, see the [MuJoCo Integration Guide](../aic_utils/aic_mujoco/README.md).
 
 ---
 

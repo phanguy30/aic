@@ -1,5 +1,7 @@
 # Challenge Overview
 
+![](./_static/assets/aic_overview.png)
+
 The **AI for Industry Challenge** targets a critical bottleneck in modern manufacturing: electronics assembly. Specifically, it focuses on dexterous cable management and insertion—a task that currently remains largely manual and repetitive.
 
 From a robotics perspective, this task is notoriously difficult due to the complex physics involved in manipulating flexible cables and the extreme precision required to perceive, handle, and insert connectors.
@@ -46,7 +48,7 @@ For detailed upload instructions, see [Submission Guidelines](./submission.md).
 
 We provide several baseline policy implementations to help you get started, including a minimal example, a ground truth-based policy for debugging, and an ACT (Action Chunking with Transformers) policy.
 
-For details on running these policies, see the [Example Policies README](../aic_example_policies/README.md) and the [Policy Integration Guide](./policy.md#baseline-policies).
+For details on running these policies, see the [Example Policies README](./aic_example_policies.md) and the [Policy Integration Guide](./policy.md#baseline-policies).
 
 ---
 

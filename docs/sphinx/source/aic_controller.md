@@ -5,7 +5,7 @@ The [aic_controller](../aic_controller/) package is a controller for ROS 2. It r
 ## Architecture
 
 A high-level overview of its architecture is provided in the following diagram:
-![](../_static/assets/technical/aic_controller.png)
+![image](./_static/assets/aic_controller.png)
 
 ### Control Pipeline
 
@@ -20,6 +20,9 @@ A high-level overview of its architecture is provided in the following diagram:
 4. **Gravity Compensation**: Additional torque is calculated using [GravityCompensationAction](../aic_controller/include/aic_controller/actions/gravity_compensation_action.hpp) to counteract gravity on the robot links.
 
 5. **Command Execution**: The impedance and gravity compensation torques are added together and sent to the robot joints.
+
+> [!NOTE]
+> `aic_controller` will reset the controller target if there is a significant error that is not reduced over a timeout duration (configurable in `tracking_error` in [aic_ros2_controllers.yaml](../aic_bringup/config/aic_ros2_controllers.yaml)). This mitigates a common teleoperation issue: if the robot is in collision while the user continues to send commands, the tracking error accumulates. Without a reset, the robot abruptly executes on that accumulated error once the robot moves out of collision.
 
 ### Cartesian Impedance Control
 
@@ -75,9 +78,7 @@ ros2 service call /aic_controller/change_target_mode aic_control_interfaces/srv/
 ros2 service call /aic_controller/change_target_mode aic_control_interfaces/srv/ChangeTargetMode "{target_mode: {mode: 2}}"
 ```
 
-```{note}
-The controller can only be in one mode at a time. For example, if the controller is in `Cartesian` mode, it will only listen to `/aic_controller/pose_commands` and ignore messages from `/aic_controller/joint_commands`. You must switch modes using the `/aic_controller/change_target_mode` service before the controller will accept that type of command. See [Controller Configuration](../docs/aic_interfaces.md#Controller-Configuration) for more details.
-```
+> **Note:** The controller can only be in one mode at a time. For example, if the controller is in `Cartesian` mode, it will only listen to `/aic_controller/pose_commands` and ignore messages from `/aic_controller/joint_commands`. You must switch modes using the `/aic_controller/change_target_mode` service before the controller will accept that type of command. See [Controller Configuration](../docs/aic_interfaces.md#Controller-Configuration) for more details.
 
 #### State feedback
 
@@ -98,9 +99,7 @@ The controller provides a service to tare (zero) the force-torque sensor at `/ai
 ros2 service call /aic_controller/tare_ft_sensor std_srvs/srv/Trigger
 ```
 
-```{important}
-This service will **not be available** during the evaluation. The force-torque sensor readings are used for scoring, and participants cannot tare the sensor during competition runs.
-```
+> **Important:** This service will **not be available** during the evaluation. The force-torque sensor readings are used for scoring, and participants cannot tare the sensor during competition runs.
 
 ## Controller Target Parameters
 
@@ -240,6 +239,4 @@ ros2 topic pub --once /aic_controller/joint_commands aic_control_interfaces/msg/
 
 The `aic_controller` uses ROS 2 parameters to set values for target limiting, smoothing, and impedance control. These are defined in [aic_controller_parameters.yaml](../aic_controller/src/aic_controller_parameters.yaml) along with their descriptions and data types.
 
-```{note}
-The configuration is fixed during the evaluation and all participants will use the same controller settings.
-```
+> **Note:** The configuration is fixed during the evaluation and all participants will use the same controller settings.

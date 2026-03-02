@@ -1,4 +1,4 @@
-# aic_interfaces
+# AI Challenge Interfaces
 
 This document defines all the interfaces available for participants to work with in the AI for Industry Challenge. It includes both standard ROS 2 interfaces and new interfaces specifically defined for this challenge.
 
@@ -76,9 +76,7 @@ The Insertion Policy controls the robot by publishing to the following topics.
 | `/aic_controller/joint_commands` | `aic_control_interfaces/msg/JointMotionUpdate` | Target configurations for joint-space control. |
 | `/aic_controller/pose_commands` | `aic_control_interfaces/msg/MotionUpdate` | Target poses for Cartesian-space control. |
 
-```{note}
-The controller operates in mutually exclusive modes. For example, if the controller is in `Cartesian` target mode, it will process messages from the `/aic_controller/pose_commands` topic and ignore messages from `/aic_controller/joint_commands`. You must set the active target mode via the `/aic_controller/change_target_mode` service before the controller will accept commands of that type.
-```
+> **Note:** The controller operates in mutually exclusive modes. For example, if the controller is in `Cartesian` target mode, it will process messages from the `/aic_controller/pose_commands` topic and ignore messages from `/aic_controller/joint_commands`. You must set the active target mode via the `/aic_controller/change_target_mode` service before the controller will accept commands of that type.
 
 ---
 
