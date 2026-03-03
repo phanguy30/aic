@@ -1,0 +1,4 @@
+# Configuration for filter_urdf.py
+package_map:
+  aic_assets: "/ws_aic/src/aic/aic_assets"
+file_prefix: ""

@@ -1,0 +1,15 @@
+# SDF to USD conversion
+
+remove_models:
+  - "ur5e"
+light_intensity_multiplier: 300
+enclosure_intensity_multiplier: 1000
+
+replace_meshes:
+  walls_visual: "./assets/staging/USDAs/walls_visual.usda"
+  floor_visual: "./assets/staging/USDAs/floor_visual.usda"
+  enclosure_visual: "./assets/staging/USDAs/enclosure_visual.usda"
+  light_visual: "./assets/staging/USDAs/light_visual.usda"
+
+add_spot_light: true
+dome_light_radius: 12.0
