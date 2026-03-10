@@ -47,6 +47,7 @@ myst_enable_extensions = [
     "colon_fence",
     "dollarmath",
     "amsmath",
+    "html_image",
 ]
 
 
