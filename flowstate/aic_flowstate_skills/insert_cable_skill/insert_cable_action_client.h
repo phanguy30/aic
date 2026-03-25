@@ -3,16 +3,18 @@
 
 #include <chrono>
 #include <memory>
+
+#include "aic_task_interfaces/action/insert_cable.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
-#include "aic_task_interfaces/action/insert_cable.hpp"
 
 using InsertCableAction = aic_task_interfaces::action::InsertCable;
 
 class InsertCableClientNode : public rclcpp::Node {
  public:
   InsertCableClientNode() : Node("insert_cable_skill_node") {
-    client_ = rclcpp_action::create_client<InsertCableAction>(this, "/insert_cable");
+    client_ =
+        rclcpp_action::create_client<InsertCableAction>(this, "/insert_cable");
   }
 
   bool WaitForServer(std::chrono::seconds timeout) {
@@ -20,12 +22,16 @@ class InsertCableClientNode : public rclcpp::Node {
   }
 
   // C++20 auto return type deduction supported by workspace specification
-  auto async_send_goal(const InsertCableAction::Goal& goal_msg, 
-                       const rclcpp_action::Client<InsertCableAction>::SendGoalOptions& options) {
+  auto async_send_goal(
+      const InsertCableAction::Goal& goal_msg,
+      const rclcpp_action::Client<InsertCableAction>::SendGoalOptions&
+          options) {
     return client_->async_send_goal(goal_msg, options);
   }
 
-  auto async_get_result(const typename rclcpp_action::Client<InsertCableAction>::GoalHandle::SharedPtr& goal_handle) {
+  auto async_get_result(
+      const typename rclcpp_action::Client<
+          InsertCableAction>::GoalHandle::SharedPtr& goal_handle) {
     return client_->async_get_result(goal_handle);
   }
 
