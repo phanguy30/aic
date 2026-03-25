@@ -44,6 +44,7 @@ jobs:
           target-ros2-distro: kilted
           skip-tests: true
           token: ${{ secrets.GITHUB_TOKEN }}
+          vcs-repo-file-url: aic.repos
           colcon-defaults: |
             {
               "build": {
