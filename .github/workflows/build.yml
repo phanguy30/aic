@@ -47,20 +47,14 @@ jobs:
           import sys
           with open('aic.repos', 'r') as f:
               lines = f.readlines()
-          output = []
-          skip = 0
-          for line in lines:
-              if skip > 0:
-                  skip -= 1
-                  continue
-              if 'gazebo/gz_cmake_vendor:' in line or \
-                 'gazebo/gz_math_vendor:' in line or \
-                 'gazebo/gz_msgs_vendor:' in line or \
-                 'gazebo/gz_transport_vendor:' in line or \
-                 'gazebo/gz_utils_vendor:' in line:
-                  skip = 3
-                  continue
-              output.append(line)
+          output = ['repositories:\n']
+          for i, line in enumerate(lines):
+              if 'intrinsic-ai/sdk_ros:' in line:
+                  output.append('  intrinsic-ai/sdk_ros:\n')
+                  output.append(lines[i+1])
+                  output.append(lines[i+2])
+                  output.append(lines[i+3])
+                  break
           with open('aic_ci.repos', 'w') as f:
               f.writelines(output)
           "
