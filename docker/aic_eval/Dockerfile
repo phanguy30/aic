@@ -14,12 +14,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
   apt install python3-numpy && \
   cd /ws_aic/src && \
   vcs import . < /ws_aic/src/aic/aic.repos --recursive && \
-  # Remove duplicate vendor packages from sdk_ros to avoid colcon errors
-  rm -rf intrinsic-ai/sdk_ros/gz_cmake_vendor \
-         intrinsic-ai/sdk_ros/gz_math_vendor \
-         intrinsic-ai/sdk_ros/gz_msgs_vendor \
-         intrinsic-ai/sdk_ros/gz_transport_vendor \
-         intrinsic-ai/sdk_ros/gz_utils_vendor && \
+  # Ignore standalone Gazebo vendors to favor sdk_ros versions for phase 1
+  touch gazebo/gz_cmake_vendor/COLCON_IGNORE \
+        gazebo/gz_math_vendor/COLCON_IGNORE \
+        gazebo/gz_msgs_vendor/COLCON_IGNORE \
+        gazebo/gz_transport_vendor/COLCON_IGNORE \
+        gazebo/gz_utils_vendor/COLCON_IGNORE && \
   # Install Gazebo dependencies.
   apt -y install $(sort -u $(find . -iname 'packages-'`lsb_release -cs`'.apt' -o -iname 'packages.apt' | grep -v '/\.git/') | sed '/gz\|sdf/d' | tr '\n' ' ') && \
   cd /ws_aic && \
