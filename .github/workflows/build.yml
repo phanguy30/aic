@@ -31,7 +31,7 @@ jobs:
       - name: Install build dependencies
         run: |
           apt-get update && apt-get upgrade -y
-          apt-get install -y python3-colcon-common-extensions python3-toml libabsl-dev
+          apt-get install -y python3-colcon-common-extensions
 
       - name: Set up git authentication
         run: |
@@ -41,23 +41,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sanitize aic.repos
-        run: |
-          python3 -c "
-          import sys
-          with open('aic.repos', 'r') as f:
-              lines = f.readlines()
-          output = ['repositories:\n']
-          for i, line in enumerate(lines):
-              if 'intrinsic-ai/sdk_ros:' in line:
-                  output.append('  intrinsic-ai/sdk_ros:\n')
-                  output.append(lines[i+1])
-                  output.append(lines[i+2])
-                  output.append(lines[i+3])
-                  break
-          with open('aic_ci.repos', 'w') as f:
-              f.writelines(output)
-          "
+      # TODO: Revisit once we finalize on a build strategy
+      - name: Ignore aic_flowstate_skills package
+        run: touch flowstate/aic_flowstate_skills/COLCON_IGNORE
 
       - name: Build and run tests
         uses: ros-tooling/action-ros-ci@v0.4
@@ -65,7 +51,6 @@ jobs:
           target-ros2-distro: kilted
           skip-tests: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          vcs-repo-file-url: ${{ github.workspace }}/aic_ci.repos
           colcon-defaults: |
             {
               "build": {
