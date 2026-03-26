@@ -41,15 +41,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Clone Repository Dependencies
+      - name: Sanitize aic.repos
         run: |
-          mkdir -p src
-          vcs import src < aic.repos --recursive
-          touch src/gazebo/gz_cmake_vendor/COLCON_IGNORE \
-                src/gazebo/gz_math_vendor/COLCON_IGNORE \
-                src/gazebo/gz_msgs_vendor/COLCON_IGNORE \
-                src/gazebo/gz_transport_vendor/COLCON_IGNORE \
-                src/gazebo/gz_utils_vendor/COLCON_IGNORE
+          python3 -c "
+          import sys
+          with open('aic.repos', 'r') as f:
+              lines = f.readlines()
+          output = []
+          skip = 0
+          for line in lines:
+              if skip > 0:
+                  skip -= 1
+                  continue
+              if 'gazebo/gz_cmake_vendor:' in line or \
+                 'gazebo/gz_math_vendor:' in line or \
+                 'gazebo/gz_msgs_vendor:' in line or \
+                 'gazebo/gz_transport_vendor:' in line or \
+                 'gazebo/gz_utils_vendor:' in line:
+                  skip = 3
+                  continue
+              output.append(line)
+          with open('aic_ci.repos', 'w') as f:
+              f.writelines(output)
+          "
 
       - name: Build and run tests
         uses: ros-tooling/action-ros-ci@v0.4
@@ -57,6 +71,7 @@ jobs:
           target-ros2-distro: kilted
           skip-tests: true
           token: ${{ secrets.GITHUB_TOKEN }}
+          vcs-repo-file-url: ${{ github.workspace }}/aic_ci.repos
           colcon-defaults: |
             {
               "build": {
