@@ -41,13 +41,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Clone Repository Dependencies
+        run: |
+          mkdir -p src
+          vcs import src < aic.repos --recursive
+          touch src/gazebo/gz_cmake_vendor/COLCON_IGNORE \
+                src/gazebo/gz_math_vendor/COLCON_IGNORE \
+                src/gazebo/gz_msgs_vendor/COLCON_IGNORE \
+                src/gazebo/gz_transport_vendor/COLCON_IGNORE \
+                src/gazebo/gz_utils_vendor/COLCON_IGNORE
+
       - name: Build and run tests
         uses: ros-tooling/action-ros-ci@v0.4
         with:
           target-ros2-distro: kilted
           skip-tests: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          vcs-repo-file-url: ${{ github.workspace }}/aic.repos
           colcon-defaults: |
             {
               "build": {
