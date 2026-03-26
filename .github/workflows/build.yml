@@ -42,9 +42,6 @@ jobs:
         uses: actions/checkout@v4
 
       # TODO: Revisit once we finalize on a build strategy
-      - name: Ignore aic_flowstate_skills package
-        run: touch flowstate/aic_flowstate_skills/COLCON_IGNORE
-
       - name: Build and run tests
         uses: ros-tooling/action-ros-ci@v0.4
         with:
@@ -54,6 +51,9 @@ jobs:
           colcon-defaults: |
             {
               "build": {
+                "packages-skip": [
+                  "aic_flowstate_skills"
+                  ],
                 "cmake-args": [
                   "-DCMAKE_BUILD_TYPE=Release"
                 ]
