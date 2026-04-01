@@ -1,0 +1,6 @@
+# proto-file: taskboard_spawning_service.proto
+# proto-message: TaskboardSpawningServiceConfig
+[type.googleapis.com/intrinsic.TaskboardSpawningServiceConfig] {
+  # Standard YAML file path used instead of proto parameters
+  # This is a placeholder config to satisfy Solution Manifest requirements
+}

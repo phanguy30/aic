@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package intrinsic;
+
+message TaskboardSpawningServiceConfig {
+  string config_file_path = 1; // Path to sample_config.yaml
+}

@@ -1,0 +1,19 @@
+# Request
+string component_name       # Key name of the rail/slot (e.g., "nic_rail_0", "lc_mount_rail_0")
+bool entity_present         # Is the visual element active?
+string entity_name          # Name of the instantiated entity (e.g., "lc_mount_0")
+
+float64 translation         # Translation shift (along the URDF defined axis)
+float64 roll                # Orientation override
+float64 pitch
+float64 yaw
+
+# Configurable Limits Override
+bool use_custom_limits      # If true, the service will clamp to specified limits instead of system defaults
+float64 min_translation
+float64 max_translation
+
+---
+# Response
+bool success                # True if parsing and instantiation was successful
+string message              # Status feedback (e.g., if clamping occurred or missing asset)

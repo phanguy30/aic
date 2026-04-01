@@ -1,0 +1,33 @@
+# proto-file: https://github.com/intrinsic-ai/sdk/blob/main/intrinsic/assets/services/proto/service_manifest.proto
+# proto-message: intrinsic_proto.services.ServiceManifest
+
+metadata {
+  id {
+    package: "ai.intrinsic.sideloaded"
+    name: "taskboard_spawner_node"
+  }
+  vendor {
+    display_name: "Intrinsic"
+  }
+  documentation {
+    description: "Dynamic asset spawner for Taskboard"
+  }
+  display_name: "Taskboard Spawning Service"
+}
+service_def {
+  real_spec {
+    image {
+      archive_filename: "taskboard_spawner_node.tar"
+    }
+  }
+  sim_spec {
+    image {
+      archive_filename: "taskboard_spawner_node.tar"
+    }
+  }
+}
+assets {
+  default_configuration_filename: "default_config.binarypb",
+  parameter_descriptor_filename: "parameter-descriptor-set.proto.bin",
+  image_filenames: ["taskboard_spawning_service.tar"]
+}
