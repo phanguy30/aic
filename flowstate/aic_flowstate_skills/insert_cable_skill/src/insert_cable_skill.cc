@@ -93,6 +93,11 @@ std::unique_ptr<intrinsic::skills::SkillInterface>
 InsertCableSkill::CreateSkill() {
   return std::make_unique<InsertCableSkill>();
 }
+absl::StatusOr<std::unique_ptr<google::protobuf::Message>>
+InsertCableSkill::Preview(const intrinsic::skills::PreviewRequest& /*request*/,
+                          intrinsic::skills::PreviewContext& /*context*/) {
+  return absl::UnimplementedError("Skill has not implemented `Preview`.");
+}
 
 //==============================================================================
 // Skill execution.
