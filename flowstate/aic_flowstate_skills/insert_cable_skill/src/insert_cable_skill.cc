@@ -76,7 +76,8 @@ InitRos init;
 InsertCableClientNode client_node_;
 
 std::mutex active_goal_mutex;
-typename rclcpp_action::Client<InsertCableAction>::GoalHandle::SharedPtr active_goal_handle;
+typename rclcpp_action::Client<InsertCableAction>::GoalHandle::SharedPtr
+    active_goal_handle;
 }  // namespace
 
 #include "intrinsic/skills/cc/skill_interface.h"
@@ -131,10 +132,12 @@ InsertCableSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
   auto send_goal_options =
       rclcpp_action::Client<InsertCableAction>::SendGoalOptions();
 
-  auto goal_handle_future = client_node_.async_send_goal(goal_msg, send_goal_options);
+  auto goal_handle_future =
+      client_node_.async_send_goal(goal_msg, send_goal_options);
 
   // Spin to receive response
-  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(), goal_handle_future) !=
+  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(),
+                                         goal_handle_future) !=
       rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(client_node_.get_logger(), "Failed to send goal");
     return absl::InternalError("Failed to send goal");
@@ -152,10 +155,12 @@ InsertCableSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
     active_goal_handle = goal_handle;
   }
 
-  RCLCPP_INFO(client_node_.get_logger(), "Goal accepted, waiting for result...");
+  RCLCPP_INFO(client_node_.get_logger(),
+              "Goal accepted, waiting for result...");
 
   auto result_future = client_node_.async_get_result(goal_handle);
-  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(), result_future) !=
+  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(),
+                                         result_future) !=
       rclcpp::FutureReturnCode::SUCCESS) {
     RCLCPP_ERROR(client_node_.get_logger(), "Failed to get result");
     return absl::InternalError("Failed to get result");
