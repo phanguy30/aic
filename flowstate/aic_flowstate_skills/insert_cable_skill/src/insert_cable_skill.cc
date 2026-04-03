@@ -138,16 +138,20 @@ InsertCableSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
       rclcpp_action::Client<InsertCableAction>::SendGoalOptions();
 
   send_goal_options.goal_response_callback =
-      [](const rclcpp_action::ClientGoalHandle<InsertCableAction>::SharedPtr& goal_handle) {
+      [](const rclcpp_action::ClientGoalHandle<InsertCableAction>::SharedPtr&
+             goal_handle) {
         if (!goal_handle) {
-          RCLCPP_ERROR(client_node_.get_logger(), "Goal was rejected by server");
+          RCLCPP_ERROR(client_node_.get_logger(),
+                       "Goal was rejected by server");
         } else {
-          RCLCPP_INFO(client_node_.get_logger(), "Goal accepted by server, waiting for result");
+          RCLCPP_INFO(client_node_.get_logger(),
+                      "Goal accepted by server, waiting for result");
         }
       };
 
   send_goal_options.result_callback =
-      [](const rclcpp_action::ClientGoalHandle<InsertCableAction>::WrappedResult& result) {
+      [](const rclcpp_action::ClientGoalHandle<
+          InsertCableAction>::WrappedResult& result) {
         switch (result.code) {
           case rclcpp_action::ResultCode::SUCCEEDED:
             RCLCPP_INFO(client_node_.get_logger(), "Goal succeeded");
