@@ -1,10 +1,10 @@
 id {
-  package: "aic.flowstate"
+  package: "ai.flowstate"
   name: "insert_cable_skill"
 }
 display_name: "Insert Cable Skill"
 vendor {
-  display_name: "AIC"
+  display_name: "Intrinsic"
 }
 documentation {
   description: "Skill that dispatches InsertCable action requests to sideloaded participant policy."
@@ -18,9 +18,9 @@ options {
 dependencies {
 }
 parameter {
-  message_full_name: "aic.flowstate.InsertCableSkillParams"
+  message_full_name: "ai.flowstate.InsertCableSkillParams"
   default_value: {
-    type_url: "type.googleapis.com/aic.flowstate.InsertCableSkillParams"
+    type_url: "type.googleapis.com/ai.flowstate.InsertCableSkillParams"
   }
 }
 return_type {
