@@ -14,8 +14,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,t
   apt install python3-numpy && \
   cd /ws_aic/src && \
   vcs import . < /ws_aic/src/aic/aic.repos --recursive && \
-  # TODO: Revisit once we finalize on a build strategy
-  touch aic/flowstate/aic_flowstate_skills/COLCON_IGNORE && \
   # Install Gazebo dependencies.
   apt -y install $(sort -u $(find . -iname 'packages-'`lsb_release -cs`'.apt' -o -iname 'packages.apt' | grep -v '/\.git/') | sed '/gz\|sdf/d' | tr '\n' ' ') && \
   cd /ws_aic && \
@@ -28,7 +26,7 @@ SHELL ["/bin/bash", "-c"]
 RUN --mount=type=cache,target=/ws_aic/build,sharing=locked \
   cd /ws_aic \
   && . /opt/ros/kilted/setup.bash \
-  && GZ_BUILD_FROM_SOURCE=1 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release --merge-install --executor sequential \
+  && GZ_BUILD_FROM_SOURCE=1 colcon build --packages-ignore aic_flowstate_skills --cmake-args -DCMAKE_BUILD_TYPE=Release --merge-install --executor sequential \
   && rm -rf /ws_aic/log /ws_aic/src
 
 COPY --chmod=644 docker/aic_eval/aic_zenoh_config.json5 /aic_zenoh_config.json5
