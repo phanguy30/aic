@@ -1,43 +1,114 @@
+/*
+ * Copyright (C) 2026 Intrinsic Innovation LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
+
 #include "insert_cable_skill.h"
 
 #include <chrono>
 
 #include "absl/status/statusor.h"
 #include "aic_task_interfaces/action/insert_cable.hpp"
-#include "insert_cable_action_client.h"
 #include "insert_cable_skill.pb.h"
+#include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
+
+using InsertCableAction = aic_task_interfaces::action::InsertCable;
+
+//==============================================================================
+// ROS initialization.
+//==============================================================================
+
+namespace {
+class InitRos {
+ public:
+  InitRos() { rclcpp::init(0, nullptr); }
+  ~InitRos() { rclcpp::shutdown(); }
+};
+
+class InsertCableClientNode : public rclcpp::Node {
+ public:
+  InsertCableClientNode() : Node("insert_cable_skill_node") {
+    client_ =
+        rclcpp_action::create_client<InsertCableAction>(this, "/insert_cable");
+  }
+
+  bool WaitForServer(std::chrono::seconds timeout) {
+    return client_->wait_for_action_server(timeout);
+  }
+
+  auto async_send_goal(
+      const InsertCableAction::Goal& goal_msg,
+      const rclcpp_action::Client<InsertCableAction>::SendGoalOptions&
+          options) {
+    return client_->async_send_goal(goal_msg, options);
+  }
+
+  auto async_get_result(
+      const typename rclcpp_action::Client<
+          InsertCableAction>::GoalHandle::SharedPtr& goal_handle) {
+    return client_->async_get_result(goal_handle);
+  }
+
+  auto async_cancel_goal(
+      const typename rclcpp_action::Client<
+          InsertCableAction>::GoalHandle::SharedPtr& goal_handle) {
+    return client_->async_cancel_goal(goal_handle);
+  }
+
+ private:
+  rclcpp_action::Client<InsertCableAction>::SharedPtr client_;
+};
+
+InitRos init;
+InsertCableClientNode client_node_;
+
+std::mutex active_goal_mutex;
+typename rclcpp_action::Client<InsertCableAction>::GoalHandle::SharedPtr active_goal_handle;
+}  // namespace
+
 #include "intrinsic/skills/cc/skill_interface.h"
 #include "intrinsic/skills/proto/skill_service.pb.h"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 
-// -----------------------------------------------------------------------------
+//==============================================================================
 // Skill signature.
-// -----------------------------------------------------------------------------
+//==============================================================================
 
 std::unique_ptr<intrinsic::skills::SkillInterface>
 InsertCableSkill::CreateSkill() {
   return std::make_unique<InsertCableSkill>();
 }
 
-// -----------------------------------------------------------------------------
+//==============================================================================
 // Skill execution.
-// -----------------------------------------------------------------------------
+//==============================================================================
 
 absl::StatusOr<std::unique_ptr<google::protobuf::Message>>
 InsertCableSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
                           intrinsic::skills::ExecuteContext& /*context*/) {
-  auto node = GetNode();
-
-  RCLCPP_INFO(node->get_logger(), "InsertCableSkill::Execute");
+  RCLCPP_INFO(client_node_.get_logger(), "InsertCableSkill::Execute");
 
   // Get parameters.
   INTR_ASSIGN_OR_RETURN(
-      auto params, request.params<aic::flowstate::InsertCableSkillParams>());
+      auto params, request.params<ai::flowstate::InsertCableSkillParams>());
 
   // Wait for server
-  if (!node->WaitForServer(std::chrono::seconds(10))) {
-    RCLCPP_ERROR(node->get_logger(),
+  if (!client_node_.WaitForServer(std::chrono::seconds(10))) {
+    RCLCPP_ERROR(client_node_.get_logger(),
                  "Action server '/insert_cable' not available");
     return absl::InternalError("Action server not available");
   }
@@ -54,42 +125,54 @@ InsertCableSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
   goal_msg.task.target_module_name = params.target_module_name();
   goal_msg.task.time_limit = params.time_limit();
 
-  RCLCPP_INFO(node->get_logger(), "Sending goal for task ID: %s",
+  RCLCPP_INFO(client_node_.get_logger(), "Sending goal for task ID: %s",
               goal_msg.task.id.c_str());
 
   auto send_goal_options =
       rclcpp_action::Client<InsertCableAction>::SendGoalOptions();
 
-  auto goal_handle_future = node->async_send_goal(goal_msg, send_goal_options);
+  auto goal_handle_future = client_node_.async_send_goal(goal_msg, send_goal_options);
 
   // Spin to receive response
-  if (rclcpp::spin_until_future_complete(node, goal_handle_future) !=
+  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(), goal_handle_future) !=
       rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_ERROR(node->get_logger(), "Failed to send goal");
+    RCLCPP_ERROR(client_node_.get_logger(), "Failed to send goal");
     return absl::InternalError("Failed to send goal");
   }
 
   auto goal_handle = goal_handle_future.get();
   if (!goal_handle) {
-    RCLCPP_ERROR(node->get_logger(), "Goal rejected by server");
+    RCLCPP_ERROR(client_node_.get_logger(), "Goal rejected by server");
     return absl::InternalError("Goal rejected by server");
   }
 
-  RCLCPP_INFO(node->get_logger(), "Goal accepted, waiting for result...");
+  // Store active handle thread-safely for concurrent cancellation halts
+  {
+    std::lock_guard<std::mutex> lock(active_goal_mutex);
+    active_goal_handle = goal_handle;
+  }
 
-  auto result_future = node->async_get_result(goal_handle);
-  if (rclcpp::spin_until_future_complete(node, result_future) !=
+  RCLCPP_INFO(client_node_.get_logger(), "Goal accepted, waiting for result...");
+
+  auto result_future = client_node_.async_get_result(goal_handle);
+  if (rclcpp::spin_until_future_complete(client_node_.get_node_base_interface(), result_future) !=
       rclcpp::FutureReturnCode::SUCCESS) {
-    RCLCPP_ERROR(node->get_logger(), "Failed to get result");
+    RCLCPP_ERROR(client_node_.get_logger(), "Failed to get result");
     return absl::InternalError("Failed to get result");
+  }
+
+  // Clear active handle
+  {
+    std::lock_guard<std::mutex> lock(active_goal_mutex);
+    active_goal_handle.reset();
   }
 
   auto wrapped_result = result_future.get();
 
-  RCLCPP_INFO(node->get_logger(), "Task completed with success: %s",
+  RCLCPP_INFO(client_node_.get_logger(), "Task completed with success: %s",
               wrapped_result.result->success ? "true" : "false");
 
-  auto result = std::make_unique<aic::flowstate::InsertCableSkillResult>();
+  auto result = std::make_unique<ai::flowstate::InsertCableSkillResult>();
   result->set_success(wrapped_result.result->success);
   result->set_message(wrapped_result.result->message);
 

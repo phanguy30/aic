@@ -29,13 +29,14 @@ install(
 
 add_executable(insert_cable_skill_main
   src/insert_cable_skill.cc
-  src/insert_cable_action_client.cc
   ${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_main.cc
 )
 
 target_include_directories(insert_cable_skill_main
   PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}/src
 )
 
 target_link_libraries(insert_cable_skill_main
@@ -47,6 +48,7 @@ target_link_libraries(insert_cable_skill_main
 )
 
 add_dependencies(insert_cable_skill_main insert_cable_skill_config)
+add_dependencies(insert_cable_skill_main insert_cable_skill_protos)
 
 install(
   TARGETS insert_cable_skill_main

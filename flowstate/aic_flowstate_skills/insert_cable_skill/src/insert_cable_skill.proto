@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package aic.flowstate;
+package ai.flowstate;
 
 message InsertCableSkillParams {
   // A unique ID for the cable insertion task.
