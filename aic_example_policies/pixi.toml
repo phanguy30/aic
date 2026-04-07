@@ -8,6 +8,7 @@ channels = [
 ]
 
 [package.host-dependencies]
+ros2-distro-mutex = "==0.13.0"
 ros-kilted-aic-control-interfaces = { path = "../aic_interfaces/aic_control_interfaces" }
 ros-kilted-aic-model = { path = "../aic_model" }
 ros-kilted-aic-model-interfaces = { path = "../aic_interfaces/aic_model_interfaces" }

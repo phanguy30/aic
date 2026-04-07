@@ -8,7 +8,10 @@ channels = [
 ]
 
 [package.host-dependencies]
+ros-kilted-rosidl-generator-rs = "*"
+ros2-distro-mutex = "==0.13.0"
 ros-kilted-aic-control-interfaces = { path = "../aic_control_interfaces" }
 
 [package.build-dependencies]
+ros-kilted-rosidl-generator-rs = "*"
 ros-kilted-aic-control-interfaces = { path = "../aic_control_interfaces" }
