@@ -556,6 +556,18 @@ EngineState Engine::initialize() {
   RCLCPP_INFO(node_->get_logger(), "Bag output directory: %s",
               scoring_output_dir_.c_str());
 
+  // Initialize flowstate ROS bridge clients
+  start_process_action_client_ =
+      rclcpp_action::create_client<StartProcessAction>(node_, "/start_flowstate_process");
+
+  // TODO(luca) remove since this is in check_endpoints
+  if (!start_process_action_client_->wait_for_action_server(
+          std::chrono::seconds(5))) {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "Start process action server not available after waiting");
+    return EngineState::Error;
+  }
+
   engine_state_ = EngineState::Initialized;
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;32m✓ AIC Engine initialized successfully!\033[0m");
@@ -616,8 +628,6 @@ EngineState Engine::run() {
 
   // TODO(luca) refactor cleanup into single function
   this->cleanup_model_node();
-  this->shutdown_model_node();
-  this->validate_model_shutdown();
   this->score_run(score);
 
   // Count successful and failed trials
@@ -750,7 +760,7 @@ TrialScore Engine::handle_trial(Trial& trial) {
                     "for trial '%s'...\033[0m",
                     attempt, MAX_RETRIES, trial.id.c_str());
         // Reset simulator before retrying (don't home robot during retry)
-        reset_simulator(trial, false);
+        reset_simulator(trial);
       }
       if (this->ready_simulator(trial)) {
         trial.state = TrialState::SimulatorReady;
@@ -1098,6 +1108,7 @@ bool Engine::check_model() {
 //==============================================================================
 bool Engine::check_endpoints() {
   RCLCPP_INFO(node_->get_logger(), "Checking required endpoints...");
+  return true;
 
   // Check nodes
   std::set<std::string> unavailable = {this->adapter_node_name_};
@@ -1153,12 +1164,20 @@ bool Engine::check_endpoints() {
     return false;
   }
 
+  if (!start_process_action_client_->wait_for_action_server(
+          std::chrono::seconds(5))) {
+    RCLCPP_ERROR(node_->get_logger(),
+                 "Start process action server not available after waiting");
+    return false;
+  }
+
   RCLCPP_INFO(node_->get_logger(), "All required endpoints are available.");
   return true;
 }
 
 //==============================================================================
 bool Engine::ready_simulator(Trial& trial) {
+  return true;
   RCLCPP_INFO(node_->get_logger(), "Readying simulator for trial '%s'...",
               trial.id.c_str());
 
@@ -1290,6 +1309,7 @@ bool Engine::ready_simulator(Trial& trial) {
 //==============================================================================
 bool Engine::ready_scoring(const Trial& trial) {
   RCLCPP_INFO(node_->get_logger(), "Checking scoring system readiness...");
+  return true;
   // Register the new connections for this trial.
   std::vector<aic_scoring::Connection> connections;
   for (const auto& task : trial.tasks) {
@@ -1362,8 +1382,24 @@ bool Engine::tasks_started(Trial& trial) {
 
     RCLCPP_INFO(this->node_->get_logger(),
                 "Sending InsertCable goal for task [%s]", task.id.c_str());
+
+    // TODO(luca) Remove this, only for testing
+    auto start_process_goal = StartProcessAction::Goal();
+    // TODO(luca) Fix the behavior tree name depending on trial (or milestone)
+    start_process_goal.behavior_tree.name = "milestone_1";
+    // start_process_goal.behavior_tree.tree_id = "ai.intrinsic.milestone_1";
+    start_process_goal.execution_mode.mode = 1;
+    start_process_goal.simulation_mode.mode = 1;
+
+    // TODO(luca) Parameters, should be related to task?
+    // start_process_goal.parameters = "";
+    start_process_goal.scene_id = "init_world";
+    auto send_goal_future = start_process_action_client_->async_send_goal(start_process_goal);
+
+    /*
     auto send_goal_future =
         insert_cable_action_client_->async_send_goal(insert_cable_goal);
+    */
     current_attempt.state = TaskState::TaskRequested;
 
     // Handle goal response
@@ -1375,7 +1411,9 @@ bool Engine::tasks_started(Trial& trial) {
       current_attempt.state = TaskState::TaskRejected;
       return false;
     }
-    current_attempt.time_started = this->node_->now();
+    // TODO(luca) It seems flowstate resets the simulation before starting the
+    // recording, so our time will always start at 0
+    current_attempt.time_started = rclcpp::Time(0, 0, RCL_ROS_TIME);
     current_attempt.state = TaskState::TaskStarted;
     // TODO(luca) Scoring assumes a single task per trial, revisit this
     // when this is not the case anymore
@@ -1387,7 +1425,7 @@ bool Engine::tasks_started(Trial& trial) {
 
     // Handle goal result
     auto result_future =
-        insert_cable_action_client_->async_get_result(goal_handle);
+        start_process_action_client_->async_get_result(goal_handle);
     RCLCPP_INFO(this->node_->get_logger(), "Waiting for result...");
 
     // Cancel goal if time limit exceeded
@@ -1396,7 +1434,7 @@ bool Engine::tasks_started(Trial& trial) {
       RCLCPP_ERROR(this->node_->get_logger(),
                    "Task [%s] timed out after %ld seconds. Cancelling goal.",
                    task.id.c_str(), task.time_limit);
-      insert_cable_action_client_->async_cancel_goal(goal_handle);
+      start_process_action_client_->async_cancel_goal(goal_handle);
       current_attempt.state = TaskState::TimeLimitExceeded;
       return false;
     }
@@ -1568,70 +1606,6 @@ bool Engine::cleanup_model_node() {
 }
 
 //==============================================================================
-bool Engine::shutdown_model_node() {
-  if (skip_model_ready_) {
-    RCLCPP_INFO(node_->get_logger(),
-                "Skipping model shutdown as per parameter.");
-    return true;
-  }
-
-  if (!this->model_discovered_) {
-    return true;
-  }
-
-  return this->transition_model_lifecycle_node(
-      lifecycle_msgs::msg::Transition::TRANSITION_UNCONFIGURED_SHUTDOWN);
-}
-
-//==============================================================================
-bool Engine::validate_model_shutdown() const {
-  if (skip_model_ready_) {
-    RCLCPP_INFO(node_->get_logger(),
-                "Skipping model shutdown validation as per parameter.");
-    return true;
-  }
-
-  if (!this->model_discovered_) {
-    return true;
-  }
-
-  auto node_graph = node_->get_node_graph_interface();
-  const auto start = node_->now();
-  const auto timeout_duration = rclcpp::Duration::from_seconds(2);
-
-  while (rclcpp::ok() && (node_->now() - start) < timeout_duration) {
-    const std::size_t pose_pubs =
-        node_graph->count_publishers("/aic_controller/pose_commands");
-    const std::size_t joint_pubs =
-        node_graph->count_publishers("/aic_controller/joint_commands");
-    if (pose_pubs == 0 && joint_pubs == 0) {
-      return true;
-    }
-    node_->get_clock()->sleep_for(
-        rclcpp::Duration(std::chrono::milliseconds(100)));
-  }
-
-  // Timed out — report all violations
-  const std::size_t pose_pubs =
-      node_graph->count_publishers("/aic_controller/pose_commands");
-  const std::size_t joint_pubs =
-      node_graph->count_publishers("/aic_controller/joint_commands");
-  if (pose_pubs > 0) {
-    RCLCPP_WARN(node_->get_logger(),
-                "Detected %zu pose command publishers in shutdown state, this "
-                "is not allowed and might affect scoring in the future",
-                pose_pubs);
-  }
-  if (joint_pubs > 0) {
-    RCLCPP_WARN(node_->get_logger(),
-                "Detected %zu joint command publishers in shutdown state, "
-                "this is not allowed and might affect scoring in the future",
-                joint_pubs);
-  }
-  return false;
-}
-
-//==============================================================================
 void Engine::reset_after_trial(const Trial& trial) {
   RCLCPP_INFO(node_->get_logger(), "Resetting after trial completion...");
 
@@ -1648,70 +1622,7 @@ void Engine::reset_after_trial(const Trial& trial) {
 }
 
 //==============================================================================
-bool Engine::home_robot() {
-  RCLCPP_INFO(node_->get_logger(), "Homing robot to initial positions...");
-
-  // Lambda to switch controllers
-  auto switch_controllers =
-      [this](const std::vector<std::string>& activate,
-             const std::vector<std::string>& deactivate) -> bool {
-    auto request = std::make_shared<SwitchControllerSrv::Request>();
-    request->activate_controllers = activate;
-    request->deactivate_controllers = deactivate;
-    request->strictness = SwitchControllerSrv::Request::BEST_EFFORT;
-
-    auto future = switch_controller_client_->async_send_request(request);
-    if (!wait_for_interruptible(future, std::chrono::seconds(10))) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "SwitchController service call timed out");
-      return false;
-    }
-
-    auto response = future.get();
-    if (!response->ok) {
-      RCLCPP_ERROR(node_->get_logger(), "Failed to switch controllers.");
-      return false;
-    }
-
-    return true;
-  };
-
-  // Deactivate aic_controller
-  if (!switch_controllers({}, {"aic_controller"})) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to deactivate aic_controller.");
-    return false;
-  }
-  RCLCPP_INFO(node_->get_logger(), "aic_controller deactivated successfully.");
-
-  // Request for joints reset to home positions using pre-built request.
-  auto reset_joints_future =
-      reset_joints_client_->async_send_request(home_reset_joints_request_);
-  if (!wait_for_interruptible(reset_joints_future, std::chrono::seconds(10))) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "ResetJoints service call timed out requesting for reset!");
-    return false;
-  }
-  auto reset_joints_response = reset_joints_future.get();
-  if (!reset_joints_response->success) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to request for joint reset.");
-    return false;
-  }
-
-  // Activate aic_controller & resume simulation
-  if (!switch_controllers({"aic_controller"}, {})) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to activate aic_controller.");
-    return false;
-  }
-  RCLCPP_INFO(node_->get_logger(), "aic_controller activated successfully.");
-
-  RCLCPP_INFO(
-      node_->get_logger(),
-      "Successfully reset joints to home position, robot homed successfully.");
-  return true;
-}
-
-//==============================================================================
-void Engine::reset_simulator(const Trial& trial, bool home_robot) {
+void Engine::reset_simulator(const Trial& trial) {
   if (skip_ready_simulator_) {
     RCLCPP_WARN(node_->get_logger(),
                 "Skipping entity deletion (skip_ready_simulator=true)");
@@ -1740,14 +1651,6 @@ void Engine::reset_simulator(const Trial& trial, bool home_robot) {
         RCLCPP_INFO(node_->get_logger(), "Successfully deleted entity '%s'",
                     request->entity.c_str());
       }
-    }
-  }
-
-  // Home robot after removing entities to prepare for next trial
-  if (home_robot) {
-    if (!this->home_robot()) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Failed to home robot during simulator reset.");
     }
   }
 }

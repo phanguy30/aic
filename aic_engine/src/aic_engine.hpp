@@ -33,6 +33,7 @@
 #include "aic_scoring/TierScore.hh"
 #include "aic_task_interfaces/action/insert_cable.hpp"
 #include "controller_manager_msgs/srv/switch_controller.hpp"
+#include "flowstate_interfaces/action/start_process.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/srv/change_state.hpp"
@@ -60,6 +61,7 @@ using JointTrajectoryPoint = trajectory_msgs::msg::JointTrajectoryPoint;
 using MotionUpdateMsg = aic_control_interfaces::msg::MotionUpdate;
 using ResetJointsSrv = aic_engine_interfaces::srv::ResetJoints;
 using SpawnEntitySrv = simulation_interfaces::srv::SpawnEntity;
+using StartProcessAction = flowstate_interfaces::action::StartProcess;
 using SwitchControllerSrv = controller_manager_msgs::srv::SwitchController;
 using Task = aic_task_interfaces::msg::Task;
 using TrajectoryGenerationMode =
@@ -205,13 +207,9 @@ class Engine {
   /// \param[in] trial The trial currently being ran
   void reset_after_trial(const Trial& trial);
 
-  /// \brief Reset robot back to home joint positions.
-  bool home_robot();
-
   /// \brief Reset simulator by deleting spawned entities for a trial.
   /// \param[in] trial The trial whose entities should be deleted
-  /// \param[in] home_robot If true, also home the robot after cleanup
-  void reset_simulator(const Trial& trial, bool home_robot = true);
+  void reset_simulator(const Trial& trial);
 
   /// \brief Check if the participant model is ready. As per challenge
   /// requirements. See challenge_rules.md for details. \return True if the
@@ -292,16 +290,6 @@ class Engine {
   /// @return True if cleanup succeeded, false otherwise.
   bool cleanup_model_node();
 
-  /// @brief Shutdown the model node to transition from unconfigured to
-  /// shutdown state.
-  /// @return True if shutdown succeeded, false otherwise.
-  bool shutdown_model_node();
-
-  /// @brief Validate that the model is behaving as expected in shutdown state
-  /// (i.e. it has no robot command publishers).
-  /// @return True if model passed shutdown validation, false otherwise.
-  bool validate_model_shutdown() const;
-
   /// @brief Stop the bag recording and score the current trial
   /// @param[in] A reference to the current trial score to update.
   void score_trial(TrialScore& trial);
@@ -352,6 +340,8 @@ class Engine {
   // Action clients.
   rclcpp_action::Client<InsertCableAction>::SharedPtr
       insert_cable_action_client_;
+  rclcpp_action::Client<StartProcessAction>::SharedPtr
+      start_process_action_client_;
 
   // Service clients.
   rclcpp::Client<SpawnEntitySrv>::SharedPtr spawn_entity_client_;

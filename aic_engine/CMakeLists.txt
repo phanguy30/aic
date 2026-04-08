@@ -14,6 +14,7 @@ find_package(aic_engine_interfaces REQUIRED)
 find_package(aic_task_interfaces REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_package(controller_manager_msgs REQUIRED)
+find_package(flowstate_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -41,6 +42,7 @@ target_link_libraries(aic_engine
   ${aic_engine_interfaces_TARGETS}
   ${aic_task_interfaces_TARGETS}
   ${controller_manager_msgs_TARGETS}
+  ${flowstate_interfaces_TARGETS}
   ${geometry_msgs_TARGETS}
   ${lifecycle_msgs_TARGETS}
   ${trajectory_msgs_TARGETS}
