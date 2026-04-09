@@ -74,11 +74,19 @@ void TaskboardSpawnerNode::SpawnFromConfig(const std::string& config_path) {
   const auto& components = logic_.GetComponents();
   for (const auto& [key, cfg] : components) {
     if (cfg.entity_present) {
+      std::string asset_name = key;
+      // Map config keys to actual asset names in the catalog
+      if (key.find("nic_rail") != std::string::npos) {
+        asset_name = "nic_card_mount";
+      } else if (key.find("sc_rail") != std::string::npos) {
+        asset_name = "sc_port";
+      }
+
       double x, y, z, qx, qy, qz, qw;
       if (logic_.ComputeRelativePose(key, x, y, z, qx, qy, qz, qw)) {
-        RCLCPP_INFO(this->get_logger(), "COMPUTED RELATIVE POSE [%s]: (x=%f, y=%f, z=%f, qx=%f, qy=%f, qz=%f, qw=%f)", 
-                    key.c_str(), x, y, z, qx, qy, qz, qw);
-        SpawnComponent(key, cfg.entity_name, x, y, z, qx, qy, qz, qw, true, "task_board_base"); 
+        RCLCPP_INFO(this->get_logger(), "COMPUTED RELATIVE POSE [%s] -> Asset: %s: (x=%f, y=%f, z=%f, qx=%f, qy=%f, qz=%f, qw=%f)", 
+                    key.c_str(), asset_name.c_str(), x, y, z, qx, qy, qz, qw);
+        SpawnComponent(asset_name, cfg.entity_name, x, y, z, qx, qy, qz, qw, true, "task_board_base"); 
       }
     }
   }
@@ -183,10 +191,45 @@ void TaskboardSpawnerNode::HandleUpdateComponent(
 
   double x, y, z, qx, qy, qz, qw;
   if (logic_.ComputeRelativePose(request->component_name, x, y, z, qx, qy, qz, qw)) {
-    
-    // Call UpdateTransform gRPC or similar
-    response->success = true;
-    response->message = "Successfully updated transform (Placeholder)";
+    auto it = logic_.GetComponents().find(request->component_name);
+    if (it == logic_.GetComponents().end()) {
+      response->success = false;
+      response->message = "Component not found in config";
+      return;
+    }
+    std::string entity_name = it->second.entity_name;
+
+    intrinsic_proto::world::UpdateTransformRequest update_req;
+    update_req.set_world_id("init_world");
+
+    auto* node_a = update_req.mutable_node_a();
+    node_a->mutable_by_name()->mutable_object()->set_object_name("task_board_base");
+
+    auto* node_b = update_req.mutable_node_b();
+    node_b->mutable_by_name()->mutable_object()->set_object_name(entity_name);
+
+    auto* pose = update_req.mutable_a_t_b();
+    pose->mutable_position()->set_x(x);
+    pose->mutable_position()->set_y(y);
+    pose->mutable_position()->set_z(z);
+    pose->mutable_orientation()->set_x(qx);
+    pose->mutable_orientation()->set_y(qy);
+    pose->mutable_orientation()->set_z(qz);
+    pose->mutable_orientation()->set_w(qw);
+
+    update_req.set_view(intrinsic_proto::world::ObjectView::BASIC);
+
+    intrinsic_proto::world::UpdateTransformResponse update_resp;
+    grpc::ClientContext context;
+    grpc::Status status = object_world_stub_->UpdateTransform(&context, update_req, &update_resp);
+
+    if (status.ok()) {
+      response->success = true;
+      response->message = "Successfully updated transform";
+    } else {
+      response->success = false;
+      response->message = "Failed to update transform: " + status.error_message();
+    }
   } else {
     response->success = false;
     response->message = "Failed to compute relative pose";

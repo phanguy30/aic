@@ -2,5 +2,5 @@
 # proto-message: TaskboardSpawningServiceConfig
 [type.googleapis.com/intrinsic.TaskboardSpawningServiceConfig] {
   # Standard YAML file path used instead of proto parameters
-  # This is a placeholder config to satisfy Solution Manifest requirements
+  config_file_path: "/opt/ros/overlay/install/share/taskboard_spawning_service/config/sample_config.yaml"
 }

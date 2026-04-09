@@ -40,6 +40,10 @@ install(
   RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
+install(DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
+
 #===============================================================================
 # Generate Solution Manifest
 intrinsic_sdk_generate_service_manifest(

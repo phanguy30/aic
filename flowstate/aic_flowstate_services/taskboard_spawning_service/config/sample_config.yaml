@@ -1,0 +1,50 @@
+# Sample configuration for Taskboard Spawner
+scene:
+  task_board:
+    # NIC Rails (Translate along X axis)
+    nic_rail_0:
+      entity_present: true
+      entity_name: "nic_rail_0_instance"
+      entity_pose:
+        translation: 0.0  # Meters
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0
+    nic_rail_1:
+      entity_present: false  # Will not be spawned
+    nic_rail_2:
+      entity_present: false
+
+    # SC Rails (Translate along X axis)
+    sc_rail_0:
+      entity_present: true
+      entity_name: "sc_rail_0_instance"
+      entity_pose:
+        translation: 0.01
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0
+
+    # Mount Rails (Translate along Y axis)
+    lc_mount_rail_0:
+      entity_present: true
+      entity_name: "lc_mount_rail_0_instance"
+      entity_pose:
+        translation: -0.02
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0
+    
+    sfp_mount_rail_0:
+      entity_present: false
+    sc_mount_rail_0:
+      entity_present: false
+
+    lc_mount_rail_1:
+      entity_present: true
+      entity_name: "lc_mount_rail_1_instance"
+      entity_pose:
+        translation: 0.02
+        roll: 0.0
+        pitch: 0.0
+        yaw: 0.0
