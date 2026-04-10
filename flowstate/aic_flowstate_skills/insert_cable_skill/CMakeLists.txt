@@ -1,30 +1,32 @@
-intrinsic_sdk_generate_skill(
-  SKILL_NAME insert_cable_skill
+# Generate the skill's protobuf files, protobuf library, and descriptor set file.
+intrinsic_sdk_protobuf_generate(
+  NAME insert_cable_skill
   SOURCES src/insert_cable_skill.proto
+  TARGET insert_cable_skill_protos
+  DESCRIPTOR_SET_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill.desc"
+)
+
+# Generate the skill config file.
+intrinsic_sdk_generate_skill_config(
+  TARGET insert_cable_skill_config
+  SKILL_NAME insert_cable_skill
   MANIFEST src/insert_cable_skill.manifest.textproto
-  PROTOS_TARGET insert_cable_skill_protos
-)
-
-intrinsic_sdk_generate_skill_manifest_pbbin(
-  TARGET insert_cable_skill_manifest
-  MANIFEST_TEXTPROTO src/insert_cable_skill.manifest.textproto
-  MANIFEST_PBBIN_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill.manifest.pbbin"
-)
-
-intrinsic_sdk_generate_skill_main_cc(
-  MANIFEST_PBBIN "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill.manifest.pbbin"
-  CONFIG_PBBIN "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_config.pbbin"
-  HEADER_FILES src/insert_cable_skill.h
-  MAIN_FILE_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_main.cc
+  PROTO_DESCRIPTOR_FILE "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill.desc"
+  SKILL_CONFIG_FILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_config.pbbin"
 )
 
 install(
   FILES
     src/insert_cable_skill.manifest.textproto
-    "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill.manifest.pbbin"
     "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_config.pbbin"
-    "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_protos.desc"
   DESTINATION share/${PROJECT_NAME}
+)
+
+# Generate the c++ main file for the skill.
+intrinsic_sdk_generate_skill_main_cc(
+  MANIFEST src/insert_cable_skill.manifest.textproto
+  HEADER_FILES src/insert_cable_skill.h
+  MAIN_FILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/insert_cable_skill_main.cc"
 )
 
 add_executable(insert_cable_skill_main
