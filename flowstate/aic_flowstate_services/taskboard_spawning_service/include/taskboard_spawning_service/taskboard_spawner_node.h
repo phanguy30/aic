@@ -28,6 +28,7 @@ class TaskboardSpawnerNode : public rclcpp::Node {
  private:
   void InitGrpcStubs();
   void SpawnFromConfig(const std::string& config_path);
+  std::string GetMappedAssetName(const std::string& key);
   bool SpawnComponent(const std::string& component_type, const std::string& instance_name,
                       double x, double y, double z, double rx_or_qx, double ry_or_qy, double rz_or_qz, 
                       double rw = 1.0, bool use_quat = false, const std::string& parent_name = "");

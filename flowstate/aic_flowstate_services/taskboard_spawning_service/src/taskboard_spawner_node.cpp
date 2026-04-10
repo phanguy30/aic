@@ -204,8 +204,13 @@ bool TaskboardSpawnerNode::SpawnComponent(const std::string& component_type, con
   }
 
   if (operation.has_error()) {
-    RCLCPP_ERROR(this->get_logger(), "Asset instantiation failed for %s: %s", instance_name.c_str(), operation.error().message().c_str());
-    return false;
+    std::string error_msg = operation.error().message();
+    if (error_msg.find("failed to save solution") != std::string::npos) {
+      RCLCPP_WARN(this->get_logger(), "Warning: Solution not saved, authentication needed %s: %s", instance_name.c_str(), error_msg.c_str());
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "Asset instantiation failed for %s: %s", instance_name.c_str(), error_msg.c_str());
+      return false;
+    }
   }
 
   RCLCPP_INFO(this->get_logger(), "Successfully spawned %s", instance_name.c_str());
