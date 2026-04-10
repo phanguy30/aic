@@ -234,5 +234,19 @@ bool TaskboardSpawnerLogic::ComputeRelativePose(
   return true;
 }
 
+void TaskboardSpawnerLogic::UpdateTranslation(const std::string& component_name, double translation) {
+  auto it = components_.find(component_name);
+  if (it != components_.end()) {
+    it->second.pose.translation = translation;
+    it->second.entity_present = true; // Ensure it's marked as present
+  } else {
+    ComponentConfig config;
+    config.entity_present = true;
+    config.entity_name = component_name;
+    config.pose.translation = translation;
+    components_[component_name] = config;
+  }
+}
+
 }  // namespace flowstate
 }  // namespace aic

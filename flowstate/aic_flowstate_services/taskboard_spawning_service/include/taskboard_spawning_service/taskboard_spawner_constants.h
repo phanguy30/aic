@@ -8,8 +8,7 @@ namespace aic {
 namespace flowstate {
 
 // Environment variables and defaults
-constexpr char kAssetServerDefault[] = "localhost:50051";
-
+constexpr char kAssetServerDefault[] = "localhost:17080";
 // Asset metadata
 constexpr char kPackageSideloaded[] = "ai.intrinsic";
 

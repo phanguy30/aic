@@ -51,6 +51,9 @@ class TaskboardSpawnerLogic {
                       double custom_min = 0.0, double custom_max = 0.0,
                       bool use_custom_limits = false) const;
 
+  /// Update translation for a component.
+  void UpdateTranslation(const std::string& component_name, double translation);
+
   /// Get the component config parsed from YAML.
   const std::unordered_map<std::string, ComponentConfig>& GetComponents() const {
     return components_;
