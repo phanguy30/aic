@@ -1743,6 +1743,16 @@ void Engine::reset_simulator(const Trial& trial, bool home_robot) {
     }
   }
 
+  // Wait for Gazebo to fully process entity removals and plugin cleanup.
+  // This ensures CablePlugin's Cleanup() has run and all world-parented
+  // static entities (e.g. detachable joints, cable guard) are removed
+  // before spawning new entities in the next trial.
+  if (!trial.spawned_entities.empty()) {
+    RCLCPP_INFO(node_->get_logger(),
+                "Waiting for simulator to process entity removals...");
+    node_->get_clock()->sleep_for(rclcpp::Duration::from_seconds(1.0));
+  }
+
   // Home robot after removing entities to prepare for next trial
   if (home_robot) {
     if (!this->home_robot()) {

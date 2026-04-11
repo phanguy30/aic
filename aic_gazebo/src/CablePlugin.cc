@@ -374,6 +374,22 @@ void CablePlugin::Cleanup(gz::sim::EntityComponentManager& _ecm) {
   for (const auto& ent : this->staticEntities) _ecm.RequestRemoveEntity(ent);
 
   this->staticEntities.clear();
+
+  // Reset entity references
+  this->detachableJointStatic0Entity = kNullEntity;
+  this->detachableJointStatic1Entity = kNullEntity;
+  this->detachableJoint0Entity = kNullEntity;
+  this->detachableJoint1Entity = kNullEntity;
+  this->detachableJointCableGuardEntity = kNullEntity;
+  this->endEffectorLinkEntity = kNullEntity;
+  this->cableConnection0LinkEntity = kNullEntity;
+  this->cableConnection1LinkEntity = kNullEntity;
+
+  // Clear transport subscribers and topics to prevent stale callbacks
+  this->cableConnection0PortSubs.clear();
+  this->cableConnection0PortTopics.clear();
+  this->attachCableConnection0ToPort = false;
+  this->touchEventCallbackNamespace.clear();
 }
 
 //////////////////////////////////////////////////
