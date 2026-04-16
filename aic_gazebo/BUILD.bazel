@@ -1,0 +1,24 @@
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@gz-msgs//tools:gz_msgs_generate.bzl", "gz_proto_library")
+load("@gz-sim//bazel:gz_sim_system_libraries.bzl", "gz_sim_system_libraries")
+
+package(default_visibility = ["//visibility:public"])
+
+gz_sim_system_libraries(
+    srcs = ["src/CableModeratorPlugin.cc", "src/CableModeratorPlugin.hh"],
+    so_lib_name = "libCableModeratorPlugin.so",
+    static_lib_name = "CableModeratorPluginLib",
+    deps = [
+        "@gz-sim",
+    ],
+)
+
+gz_sim_system_libraries(
+    srcs = ["src/OffLimitContactsPlugin.cc", "src/OffLimitContactsPlugin.hh"],
+    so_lib_name = "libOffLimitContactsPlugin.so",
+    static_lib_name = "OffLimitContactsPluginLib",
+    deps = [
+        "@gz-sim",
+    ],
+)
