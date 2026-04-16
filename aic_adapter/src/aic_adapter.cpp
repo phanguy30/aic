@@ -56,6 +56,9 @@ bool ReorderJointArray(const std::vector<T>& original,
 }
 
 AicAdapterNode::AicAdapterNode() : Node("aic_adapter_node") {
+  include_gripper_in_joint_state_ =
+      this->declare_parameter("include_gripper_in_joint_state", true);
+
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
   tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
@@ -83,7 +86,9 @@ AicAdapterNode::AicAdapterNode() : Node("aic_adapter_node") {
   joint_sort_order_["wrist_1_joint"] = 3;
   joint_sort_order_["wrist_2_joint"] = 4;
   joint_sort_order_["wrist_3_joint"] = 5;
-  joint_sort_order_["gripper/left_finger_joint"] = 6;
+  if (include_gripper_in_joint_state_) {
+    joint_sort_order_["gripper/left_finger_joint"] = 6;
+  }
   joint_state_deque_ =
       std::make_unique<std::deque<sensor_msgs::msg::JointState::UniquePtr>>();
   joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -278,13 +283,15 @@ void AicAdapterNode::ReorderJointState(
     reordered.effort[reordered_idx] = original.effort[original_joint_idx];
   }
 
-  // Rename the last joint "gripper", and change it to the distance between
-  // the fingers, rather than the prismatic joint motion, just by dividing
-  // the value by 2.
-  reordered.name[n_joints - 1] = "gripper";
-  reordered.position[n_joints - 1] /= 2.0;
-  reordered.velocity[n_joints - 1] /= 2.0;
-  reordered.effort[n_joints - 1] /= 2.0;
+  if (include_gripper_in_joint_state_) {
+    // Rename the last joint "gripper", and change it to the distance between
+    // the fingers, rather than the prismatic joint motion, just by dividing
+    // the value by 2.
+    reordered.name[n_joints - 1] = "gripper";
+    reordered.position[n_joints - 1] /= 2.0;
+    reordered.velocity[n_joints - 1] /= 2.0;
+    reordered.effort[n_joints - 1] /= 2.0;
+  }
 }
 
 }  // namespace aic
