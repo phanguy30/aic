@@ -777,7 +777,12 @@ def main():
         # Add cable_default
         root_default = world_spec.default
         cable_default = world_spec.add_default("cable_default", root_default)
-        cable_default.joint.damping = 0.2
+        # MuJoCo >=3.7.0 requires a 3-element array for ball-joint damping;
+        # older versions accept only a scalar.
+        try:
+            cable_default.joint.damping = 0.2
+        except TypeError:
+            cable_default.joint.damping = [0.2, 0.2, 0.2]
         print("Added 'cable_default' with joint damping 0.2.")
 
         # Add friction defaults for task board components (matching Gazebo SDF)
