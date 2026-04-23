@@ -912,6 +912,8 @@ void RobotControlBridge::MotionUpdateCallback(
     return;
   }
 
+  LOG_EVERY_N(INFO, 1000) << absl::StrFormat("Received MotionUpdate command");
+
   // Start with the default motion update
   intrinsic_proto::icon::actions::proto::MotionUpdate proto_msg =
       data_->agent_bridge_fixed_params_.motion_update();
@@ -1015,6 +1017,9 @@ void RobotControlBridge::JointMotionUpdateCallback(
                   "process JointMotionUpdate commands.";
     return;
   }
+
+  LOG_EVERY_N(INFO, 1000) << absl::StrFormat(
+      "Received JointMotionUpdate command");
 
   intrinsic_proto::icon::actions::proto::JointMotionUpdate proto_msg =
       data_->agent_bridge_joint_fixed_params_.motion_update();
