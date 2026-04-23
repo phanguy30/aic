@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ ! -d "src/sdk-ros" ]; then
+if [ ! -d "src/intrinsic-ai/sdk-ros" ]; then
   echo "This script must be run at the top of a Colcon workspace with sdk-ros."
   exit
 fi
@@ -37,12 +37,12 @@ done
 
 set -o errexit
 set -o verbose
-src/sdk-ros/scripts/build_container.sh \
+src/intrinsic-ai/sdk-ros/scripts/build_container.sh \
   --ros_distro "$ROS_DISTRO" \
   --service_name aic_flowstate_ros_bridge \
   --service_package aic_flowstate_ros_bridge \
   --dependencies nlohmann-json3-dev
-src/sdk-ros/scripts/build_bundle.sh \
+src/intrinsic-ai/sdk-ros/scripts/build_bundle.sh \
   --service_name aic_flowstate_ros_bridge \
   --service_package aic_flowstate_ros_bridge \
   --manifest_path src/aic/flowstate/aic_flowstate_ros_bridge/aic_flowstate_ros_bridge.manifest.textproto \
