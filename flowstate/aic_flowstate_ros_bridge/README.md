@@ -10,7 +10,7 @@ Set up the Docker engine:
 
 ```bash
 cd ~/ws_aic
-./src/intrinsic-ai/sdk-ros/scripts/setup_docker.sh
+./src/sdk-ros/scripts/setup_docker.sh
 ```
 
 Then, create the service bundle using the `build_service_bundle.sh` script.
