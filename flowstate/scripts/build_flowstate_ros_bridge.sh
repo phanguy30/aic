@@ -4,7 +4,7 @@ if [ ! -d "src/intrinsic-ai/sdk-ros" ]; then
   exit
 fi
 
-ROS_DISTRO="jazzy"
+ROS_DISTRO="kilted"
 
 show_help() {
   echo "Usage: $(basename "$0") [OPTIONS]"
@@ -13,7 +13,7 @@ show_help() {
   echo ""
   echo "Options:"
   echo "  -h, --help           Show this help message and exit"
-  echo "  --ros_distro ROS_DISTRO  Name of the ROS distro (default: jazzy)"
+  echo "  --ros_distro ROS_DISTRO  Name of the ROS distro (default: kilted)"
   echo ""
 }
 
