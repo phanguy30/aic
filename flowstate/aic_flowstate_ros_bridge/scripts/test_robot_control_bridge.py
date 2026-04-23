@@ -179,9 +179,6 @@ def main(args=None):
     node = TestRobotControlBridgeNode()
 
     try:
-        # Send service request to switch to Cartesian target mode
-        node.send_change_target_mode_req(TargetMode.MODE_CARTESIAN)
-
         quat_tool_down = [
             0.7071068,
             0.7071068,
@@ -189,13 +186,31 @@ def main(args=None):
             0.0,
         ]  # ZYX = (180, 0, 90), z axis normal to plane and (x,y) axes are aligned with base_link axes
 
-        # Send Cartesian pose targets in both "base_link" and "gripper/tcp" frames
+        # Trigger reconection
         node.send_cartesian_pose_target(
-            [0.5, 0.1, 0.3],
+            [-0.501, -0.175, 0.2],
             quat_tool_down,
             "base_link",
         )
         time.sleep(3)
+
+        # Send service request to switch to Cartesian target mode
+        node.send_change_target_mode_req(TargetMode.MODE_CARTESIAN)
+
+        # Send Cartesian pose targets in both "base_link" and "gripper/tcp" frames
+        node.send_cartesian_pose_target(
+            [-0.501, -0.175, 0.2],
+            quat_tool_down,
+            "base_link",
+        )
+        time.sleep(5)
+
+        node.send_cartesian_pose_target(
+            [-0.501, -0.175, 0.5],
+            [-0.2126311, 0.2126311, 0.6743797, 0.6743797],
+            "base_link",
+        )
+        time.sleep(5)
 
         # Send Cartesian twist targets in both "base_link" and "gripper/tcp" frames
         node.send_cartesian_twist_target(
