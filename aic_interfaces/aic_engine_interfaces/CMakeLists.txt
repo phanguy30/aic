@@ -23,6 +23,7 @@ find_package(std_msgs REQUIRED)
 
 set(srv_files
   "srv/ResetJoints.srv"
+  "srv/StartEngine.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

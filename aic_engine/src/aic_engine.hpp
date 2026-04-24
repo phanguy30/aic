@@ -18,6 +18,7 @@
 #ifndef AIC_ENGINE_HPP_
 #define AIC_ENGINE_HPP_
 
+#include <aic_engine_interfaces/srv/start_engine.hpp>
 #include <aic_engine_interfaces/srv/reset_joints.hpp>
 #include <functional>
 #include <memory>
@@ -61,6 +62,7 @@ using JointTrajectoryPoint = trajectory_msgs::msg::JointTrajectoryPoint;
 using MotionUpdateMsg = aic_control_interfaces::msg::MotionUpdate;
 using ResetJointsSrv = aic_engine_interfaces::srv::ResetJoints;
 using SpawnEntitySrv = simulation_interfaces::srv::SpawnEntity;
+using StartEngineSrv = aic_engine_interfaces::srv::StartEngine;
 using StartProcessAction = flowstate_interfaces::action::StartProcess;
 using SwitchControllerSrv = controller_manager_msgs::srv::SwitchController;
 using Task = aic_task_interfaces::msg::Task;
@@ -68,15 +70,6 @@ using TrajectoryGenerationMode =
     aic_control_interfaces::msg::TrajectoryGenerationMode;
 using TriggerSrv = std_srvs::srv::Trigger;
 using WrenchStampedMsg = geometry_msgs::msg::WrenchStamped;
-
-//==============================================================================
-enum class EngineState : uint8_t {
-  Uninitialized = 0,
-  Initialized,
-  Running,
-  Error,
-  Completed
-};
 
 //==============================================================================
 // For each trial, track its state.
@@ -178,6 +171,16 @@ struct Score {
   double calculate_total_score() const;
 };
 
+struct TrialResult {
+  // Score for the trial.
+  TrialScore score;
+  // Error message if there was an error, std::nullopt otherwise.
+  std::optional<std::string> error;
+
+  TrialResult(const TrialScore& score_, const std::optional<std::string>& error_ = std::nullopt) :
+    score(score_), error(error_) { }
+};
+
 //==============================================================================
 // Ensure rclcpp::init has been called before creating an instance.
 class Engine {
@@ -188,20 +191,20 @@ class Engine {
   /// \brief Destructor.
   ~Engine();
 
-  /// \brief Start the engine.
-  EngineState start();
-
  private:
   // Initializes the engine.
-  EngineState initialize();
+  /// \param[in] trial The yaml configuration for the run.
+  /// \return An error message if initialization failed, std::nullopt otherwise.
+  std::optional<std::string> initialize(const std::string& yaml_config);
 
   /// \brief Run the engine.
-  EngineState run();
+  /// \return An error message if execution failed, std::nullopt otherwise.
+  std::optional<std::string> run();
 
   /// \brief Handle the logic for a given trial.
   /// \param[in] trial The trial to handle.
-  /// \return The resulting score of the trial after handling.
-  TrialScore handle_trial(Trial& trial);
+  /// \return The result of the trial after handling.
+  TrialResult handle_trial(Trial& trial);
 
   /// \brief Reset internal and simulator states after a trial is completed.
   /// \param[in] trial The trial currently being ran
@@ -316,6 +319,11 @@ class Engine {
     return false;
   }
 
+  /// @brief Callback for the service to start the engine. Will handle the
+  /// requested trial and return a response with its outcome.
+  void start_engine_callback(const std::shared_ptr<StartEngineSrv::Request> request,
+      std::shared_ptr<StartEngineSrv::Response> response);
+
   // Strings.
   // Name of the aic_adapter node for lifecycle transitions.
   std::string adapter_node_name_;
@@ -355,6 +363,10 @@ class Engine {
   rclcpp::Client<ResetJointsSrv>::SharedPtr reset_joints_client_;
   rclcpp::Client<TriggerSrv>::SharedPtr tare_ft_client_;
 
+
+  // Service servers.
+  rclcpp::Service<StartEngineSrv>::SharedPtr start_engine_server_;
+
   // TF
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
@@ -370,9 +382,6 @@ class Engine {
 
   // Thread to spin ROS 2 node.
   std::thread spin_thread_;
-
-  // Engine state.
-  EngineState engine_state_;
 
   // Whether to publish ground truth data for scoring.
   bool ground_truth_;

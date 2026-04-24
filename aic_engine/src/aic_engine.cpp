@@ -293,7 +293,6 @@ Engine::Engine(const rclcpp::NodeOptions& options)
       insert_cable_action_client_(nullptr),
       spawn_entity_client_(nullptr),
       is_first_trial_(true),
-      engine_state_(EngineState::Uninitialized),
       model_discovered_(false) {
   RCLCPP_INFO(node_->get_logger(), "Creating AIC Engine...");
 
@@ -336,6 +335,8 @@ Engine::Engine(const rclcpp::NodeOptions& options)
   }
   RCLCPP_INFO(node_->get_logger(), "Scoring output directory set to: %s",
               scoring_output_dir_.c_str());
+  start_engine_server_ = node_->create_service<StartEngineSrv>("/start_aic_engine",
+      std::bind(&Engine::start_engine_callback, this, std::placeholders::_1, std::placeholders::_2));
 
   spin_thread_ = std::thread([node = node_]() {
     rclcpp::executors::SingleThreadedExecutor executor;
@@ -345,34 +346,21 @@ Engine::Engine(const rclcpp::NodeOptions& options)
 }
 
 //==============================================================================
-EngineState Engine::start() {
-  switch (engine_state_) {
-    case EngineState::Uninitialized:
-      if (this->initialize() != EngineState::Initialized) {
-        RCLCPP_ERROR(node_->get_logger(), "Engine failed to initialize");
-        return engine_state_;
-      }
-      [[fallthrough]];
-    case EngineState::Initialized:
-      return this->run();
-    case EngineState::Running:
-      RCLCPP_WARN(node_->get_logger(), "Engine is already running");
-      return engine_state_;
-    case EngineState::Error:
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Engine is in error state. Cannot start.");
-      return engine_state_;
-    case EngineState::Completed:
-      RCLCPP_INFO(node_->get_logger(), "Engine has already completed.");
-      return engine_state_;
-    default:
-      RCLCPP_ERROR(node_->get_logger(), "Unknown engine state. Cannot start.");
-      return engine_state_;
+void Engine::start_engine_callback(const std::shared_ptr<StartEngineSrv::Request> request,
+    std::shared_ptr<StartEngineSrv::Response> response)
+{
+  const auto initialization_result = this->initialize(request->config);
+  if (initialization_result.has_value()) {
+    RCLCPP_ERROR(node_->get_logger(), "Failed initializing engine: %s", initialization_result.value().c_str());
+    response->success = false;
+    response->message = initialization_result.value();
+    return;
   }
+
 }
 
 //==============================================================================
-EngineState Engine::initialize() {
+std::optional<std::string> Engine::initialize(const std::string& yaml_config) {
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;36m╔════════════════════════════════════════╗\033[0m");
   RCLCPP_INFO(node_->get_logger(),
@@ -380,30 +368,21 @@ EngineState Engine::initialize() {
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;36m╚════════════════════════════════════════╝\033[0m");
 
-  // Initialize the trials.
-  const std::filesystem::path config_file_path =
-      node_->get_parameter("config_file_path").as_string();
-
-  // Try to load config file as YAML
+  // Try to load config as YAML
   try {
-    config_ = YAML::LoadFile(config_file_path);
+    config_ = YAML::Load(yaml_config);
   } catch (const YAML::Exception& e) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to load config file '%s': %s",
-                 config_file_path.c_str(), e.what());
-    engine_state_ = EngineState::Error;
-    return engine_state_;
+    const std::string error = "Failed to load config '" + yaml_config + "': " + e.what();
+    return error;
   } catch (const std::exception& e) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to load config file '%s': %s",
-                 config_file_path.c_str(), e.what());
-    engine_state_ = EngineState::Error;
-    return engine_state_;
+    const std::string error = "Failed to load config '" + yaml_config + "': " + e.what();
+    return error;
   }
 
   // Parse trials from config
   if (!config_["trials"]) {
-    RCLCPP_ERROR(node_->get_logger(), "Config missing required key: 'trials'");
-    engine_state_ = EngineState::Error;
-    return engine_state_;
+    const std::string error = "Config missing required key: 'trials'";
+    return error;
   }
 
   const auto& trials_config = config_["trials"];
@@ -417,47 +396,30 @@ EngineState Engine::initialize() {
       RCLCPP_INFO(node_->get_logger(), "Successfully parsed trial '%s'",
                   trial_id.c_str());
     } catch (const std::runtime_error& e) {
-      RCLCPP_ERROR(node_->get_logger(), "Failed to parse trial '%s': %s",
-                   trial_id.c_str(), e.what());
-      engine_state_ = EngineState::Error;
-      return engine_state_;
+      const std::string error = "Failed to parse trial '" + trial_id + "': " + e.what();
+      return error;
     }
   }
 
   if (trials_.empty()) {
-    RCLCPP_ERROR(node_->get_logger(), "No trials found in config");
-    engine_state_ = EngineState::Error;
-    return engine_state_;
+    const std::string error = "No trials found in config";
+    return error;
   }
 
   RCLCPP_INFO(node_->get_logger(), "Successfully parsed %zu trial(s)",
               trials_.size());
 
   if (!config_["scoring"]) {
-    RCLCPP_ERROR(node_->get_logger(), "Config missing required key: 'scoring'");
-    engine_state_ = EngineState::Error;
-    return engine_state_;
-  }
-
-  if (!config_["robot"]) {
-    RCLCPP_ERROR(node_->get_logger(), "Config missing required key: 'robot'");
-    engine_state_ = EngineState::Error;
-    return engine_state_;
-  }
-  const auto& robot_config = config_["robot"];
-  if (!robot_config["home_joint_positions"]) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Config missing required key: 'robot.home_joint_positions'");
-    engine_state_ = EngineState::Error;
-    return engine_state_;
+    const std::string error = "Config missing required key: 'scoring'";
+    return error;
   }
 
   // Make sure a valid clock is received, it takes time to initialize
   // the subscriber and following timeout calls might fail otherwise
   RCLCPP_INFO(node_->get_logger(), "Waiting for clock");
   if (!node_->get_clock()->wait_until_started(rclcpp::Duration(10, 0))) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to find a valid clock");
-    return EngineState::Error;
+    const std::string error = "Failed to find a valid clock";
+    return error;
   }
   RCLCPP_INFO(node_->get_logger(), "Clock found successfully.");
 
@@ -502,44 +464,10 @@ EngineState Engine::initialize() {
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
-  // Pre-build home messages directly from config
-  const auto joint_config = robot_config["home_joint_positions"];
-  if (joint_config.size() != 6) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Home joint positions should account for exactly 6 joints.");
-    return EngineState::Error;
-  }
-
-  // Build JointMotionUpdateMsg and ResetJointsSrv::Request for homing
-  auto home_point = JointTrajectoryPoint();
-  home_point.positions = {};
-  home_reset_joints_request_ = std::make_shared<ResetJointsSrv::Request>();
-
-  for (auto it = joint_config.begin(); it != joint_config.end(); ++it) {
-    const std::string joint_name = it->first.as<std::string>();
-    const double initial_pos = it->second.as<double>();
-
-    RCLCPP_INFO(node_->get_logger(),
-                "Retrieved home joint position from config: [%s]: %f",
-                joint_name.c_str(), initial_pos);
-
-    home_point.positions.emplace_back(initial_pos);
-    home_reset_joints_request_->joint_names.emplace_back(joint_name);
-    home_reset_joints_request_->initial_positions.emplace_back(initial_pos);
-  }
-
-  home_joint_msg_.target_state = home_point;
-  home_joint_msg_.target_stiffness = {100.0, 100.0, 100.0, 50.0, 50.0, 50.0};
-  home_joint_msg_.target_damping = {40.0, 40.0, 40.0, 15.0, 15.0, 15.0};
-  home_joint_msg_.trajectory_generation_mode.mode =
-      TrajectoryGenerationMode::MODE_POSITION;
-
-  RCLCPP_INFO(node_->get_logger(), "Pre-built home messages for robot homing.");
-
   scoring_tier2_ = std::make_unique<aic_scoring::ScoringTier2>(node_.get());
   if (!scoring_tier2_->Initialize(config_["scoring"])) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to initialize scoring system");
-    return EngineState::Error;
+    const std::string error = "Failed to initialize scoring system";
+    return error;
   }
   scoring_tier2_->SetGripperFrame(
       node_->get_parameter("gripper_frame_name").as_string());
@@ -548,10 +476,8 @@ EngineState Engine::initialize() {
   std::error_code ec;
   std::filesystem::create_directories(scoring_output_dir_, ec);
   if (ec) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Failed to create bag output directory '%s': %s",
-                 scoring_output_dir_.c_str(), ec.message().c_str());
-    return EngineState::Error;
+    const std::string error = "Failed to create bag output directory '" + scoring_output_dir_ + "': " + ec.message().c_str();
+    return error;
   }
   RCLCPP_INFO(node_->get_logger(), "Bag output directory: %s",
               scoring_output_dir_.c_str());
@@ -563,20 +489,18 @@ EngineState Engine::initialize() {
   // TODO(luca) remove since this is in check_endpoints
   if (!start_process_action_client_->wait_for_action_server(
           std::chrono::seconds(5))) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Start process action server not available after waiting");
-    return EngineState::Error;
+    const std::string error = "Start process action server not available after waiting";
+    return error;
   }
 
-  engine_state_ = EngineState::Initialized;
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;32m✓ AIC Engine initialized successfully!\033[0m");
 
-  return engine_state_;
+  return std::nullopt;
 }
 
 //==============================================================================
-EngineState Engine::run() {
+std::optional<std::string> Engine::run() {
   RCLCPP_INFO(node_->get_logger(), " ");
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;35m╔════════════════════════════════════════╗\033[0m");
@@ -589,15 +513,11 @@ EngineState Engine::run() {
               "\033[1;35m╚════════════════════════════════════════╝\033[0m");
   RCLCPP_INFO(node_->get_logger(), " ");
 
-  engine_state_ = EngineState::Running;
   Score score;
 
   size_t trial_num = 1;
+  std::optional<std::string> trial_error;
   for (auto& trial_entry : trials_) {
-    if (!rclcpp::ok()) {
-      engine_state_ = EngineState::Error;
-      break;
-    }
     const std::string& trial_id = trial_entry.first;
     Trial& trial = trial_entry.second;
     RCLCPP_INFO(node_->get_logger(), " ");
@@ -607,9 +527,10 @@ EngineState Engine::run() {
                 trial_num++, trials_.size(), trial_id.c_str());
     RCLCPP_INFO(node_->get_logger(),
                 "\033[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
-    TrialScore trial_score = this->handle_trial(trial);
-    score.breakdown[trial_id] = trial_score;
-    if (engine_state_ == EngineState::Error) {
+    TrialResult trial_result = this->handle_trial(trial);
+    score.breakdown[trial_id] = trial_result.score;
+    if (trial_result.error.has_value()) {
+      trial_error = trial_result.error;
       break;
     }
 
@@ -617,12 +538,12 @@ EngineState Engine::run() {
       RCLCPP_INFO(
           node_->get_logger(),
           "\033[1;32m✓ Trial '%s' completed successfully! Score: %f\033[0m",
-          trial_id.c_str(), trial_score.total_score());
+          trial_id.c_str(), trial_result.score.total_score());
     } else {
       RCLCPP_WARN(node_->get_logger(),
                   "\033[1;33m⚠ Trial '%s' failed or was not completed. Score: "
                   "%f. Continuing to next trial...\033[0m",
-                  trial_id.c_str(), trial_score.total_score());
+                  trial_id.c_str(), trial_result.score.total_score());
     }
   }
 
@@ -642,8 +563,7 @@ EngineState Engine::run() {
   }
 
   RCLCPP_INFO(node_->get_logger(), " ");
-  if (engine_state_ == EngineState::Running) {
-    engine_state_ = EngineState::Completed;
+  if (!trial_error.has_value()) {
     RCLCPP_INFO(node_->get_logger(),
                 "\033[1;32m╔════════════════════════════════════════╗\033[0m");
     RCLCPP_INFO(node_->get_logger(),
@@ -685,11 +605,11 @@ EngineState Engine::run() {
   }
   RCLCPP_INFO(node_->get_logger(), " ");
 
-  return engine_state_;
+  return trial_error;
 }
 
 //==============================================================================
-TrialScore Engine::handle_trial(Trial& trial) {
+TrialResult Engine::handle_trial(Trial& trial) {
   RCLCPP_INFO(node_->get_logger(), "\033[1;36m→ Starting trial '%s'...\033[0m",
               trial.id.c_str());
   TrialScore score;
@@ -701,12 +621,8 @@ TrialScore Engine::handle_trial(Trial& trial) {
       trial.state = TrialState::ModelReady;
     }
   } else {
-    RCLCPP_ERROR(
-        node_->get_logger(),
-        "Attempted to start trial while not Uninitialized. Report this bug.");
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, "Attempted to start trial while not Unitialized. Report this bug."};
   }
 
   if (trial.state == TrialState::ModelReady) {
@@ -728,24 +644,19 @@ TrialScore Engine::handle_trial(Trial& trial) {
       }
     }
     if (!success) {
-      RCLCPP_ERROR(node_->get_logger(),
+      const std::string error =
                    "\033[1;31m  ✗ EVALUATION ERROR: Endpoints check failed "
-                   "after %d attempts for trial '%s'. "
+                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
                    "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m",
-                   MAX_RETRIES, trial.id.c_str());
+                   "started?\033[0m";
       reset_after_trial(trial);
-      engine_state_ = EngineState::Error;
-      return score;
+      return {score, error};
     }
   } else {
-    RCLCPP_ERROR(
-        node_->get_logger(),
-        "\033[1;31m  ✗ Participant model is not ready for trial '%s'\033[0m",
-        trial.id.c_str());
+      const std::string error =
+        "\033[1;31m  ✗ Participant model is not ready for trial '" + trial.id + "'\033[0m";
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, error};
   }
 
   if (trial.state == TrialState::EndpointsReady) {
@@ -768,24 +679,20 @@ TrialScore Engine::handle_trial(Trial& trial) {
       }
     }
     if (!success) {
-      RCLCPP_ERROR(node_->get_logger(),
+      const std::string error =
                    "\033[1;31m  ✗ EVALUATION ERROR: Simulator setup failed "
-                   "after %d attempts for trial '%s'. "
+                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
                    "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m",
-                   MAX_RETRIES, trial.id.c_str());
+                   "started?\033[0m";
       reset_after_trial(trial);
-      engine_state_ = EngineState::Error;
-      return score;
+      return {score, error};
     }
   } else {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "\033[1;31m  ✗ Required endpoints are not available for trial "
-                 "'%s'\033[0m",
-                 trial.id.c_str());
+    const std::string error =
+                 "\033[1;31m  ✗ Required endpoints are not available for trial '" +
+                 trial.id + "'\033[0m";
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, error};
   }
 
   if (trial.state == TrialState::SimulatorReady) {
@@ -806,23 +713,19 @@ TrialScore Engine::handle_trial(Trial& trial) {
       }
     }
     if (!success) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "\033[1;31m  ✗ EVALUATION ERROR: Scoring setup failed after "
-                   "%d attempts for trial '%s'. "
+      const std::string error =
+                   "\033[1;31m  ✗ EVALUATION ERROR: Scoring setup failed "
+                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
                    "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m",
-                   MAX_RETRIES, trial.id.c_str());
+                   "started?\033[0m";
       reset_after_trial(trial);
-      engine_state_ = EngineState::Error;
-      return score;
+      return {score, error};
     }
   } else {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "\033[1;31m  ✗ Simulator is not ready for trial '%s'\033[0m",
-                 trial.id.c_str());
+    const std::string error =
+                 "\033[1;31m  ✗ Simulator is not ready for trial '" + trial.id + "'\033[0m";
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, error};
   }
 
   if (trial.state == TrialState::ScoringReady) {
@@ -831,13 +734,10 @@ TrialScore Engine::handle_trial(Trial& trial) {
                 trial.id.c_str());
     this->tasks_started(trial);
   } else {
-    RCLCPP_ERROR(
-        node_->get_logger(),
-        "\033[1;31m  ✗ Scoring system is not ready for trial '%s'\033[0m",
-        trial.id.c_str());
+    const std::string error =
+        "\033[1;31m  ✗ Scoring system is not ready for trial '" + trial.id + "'\033[0m";
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, error};
   }
 
   if (trial.state == TrialState::TasksExecuting) {
@@ -852,13 +752,11 @@ TrialScore Engine::handle_trial(Trial& trial) {
       score_trial(score);
     }
   } else {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "\033[1;31m  ✗ Tasks cannot be started successfully for trial "
-                 "'%s'\033[0m",
-                 trial.id.c_str());
+    const std::string error =
+                 "\033[1;31m  ✗ Tasks cannot be started successfully for trial '" +
+                 trial.id + "'\033[0m";
     reset_after_trial(trial);
-    engine_state_ = EngineState::Error;
-    return score;
+    return {score, error};
   }
 
   if (trial.state != TrialState::AllTasksCompleted) {
@@ -868,11 +766,11 @@ TrialScore Engine::handle_trial(Trial& trial) {
                  trial.id.c_str());
     score_trial(score);
     reset_after_trial(trial);
-    return score;
+    return {score};
   }
 
   reset_after_trial(trial);
-  return score;
+  return {score};
 }
 
 /// Given a set [s1, s2, s3] returns a string "s1, s2, s3"
