@@ -164,6 +164,46 @@ void CableModeratorPlugin::Configure(
 }
 
 //////////////////////////////////////////////////
+void CableModeratorPlugin::ProcessManualGraspRequests(
+    gz::sim::EntityComponentManager& _ecm) {
+  if (this->attachEnd0Requested.exchange(false)) {
+    if (this->FindGripperJoint(this->cableConnection0LinkEntity, _ecm) == kNullEntity) {
+      Entity jointEntity = _ecm.CreateEntity();
+      _ecm.CreateComponent(
+          jointEntity,
+          components::DetachableJoint(
+              {this->endEffectorLinkEntity, this->cableConnection0LinkEntity, "fixed"}));
+      gzdbg << "Manually attached end 0" << std::endl;
+    }
+  }
+  if (this->detachEnd0Requested.exchange(false)) {
+    Entity gripperJoint = this->FindGripperJoint(this->cableConnection0LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      _ecm.RequestRemoveEntity(gripperJoint);
+      gzdbg << "Manually detached end 0" << std::endl;
+    }
+  }
+
+  if (this->attachEnd1Requested.exchange(false)) {
+    if (this->FindGripperJoint(this->cableConnection1LinkEntity, _ecm) == kNullEntity) {
+      Entity jointEntity = _ecm.CreateEntity();
+      _ecm.CreateComponent(
+          jointEntity,
+          components::DetachableJoint(
+              {this->endEffectorLinkEntity, this->cableConnection1LinkEntity, "fixed"}));
+      gzdbg << "Manually attached end 1" << std::endl;
+    }
+  }
+  if (this->detachEnd1Requested.exchange(false)) {
+    Entity gripperJoint = this->FindGripperJoint(this->cableConnection1LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      _ecm.RequestRemoveEntity(gripperJoint);
+      gzdbg << "Manually detached end 1" << std::endl;
+    }
+  }
+}
+
+//////////////////////////////////////////////////
 void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
                                      gz::sim::EntityComponentManager& _ecm) {
   if (this->cableState == CableState::COMPLETED) return;
@@ -177,6 +217,8 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
         findLinkInModel(this->endEffectorModelName, endEffectorLinkName, _ecm);
   }
   if (this->endEffectorLinkEntity == kNullEntity) return;
+
+  this->ProcessManualGraspRequests(_ecm);
 
   if (this->cableState == CableState::HARNESS) {
     // Hold both connections of the cable in place
@@ -211,6 +253,10 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
     }
 
     if (this->attachCableConnectionToPort) {
+      this->cableConnectionPortSubs.clear();
+      this->attachCableConnectionToPort = false;
+      this->touchEventCallbackNamespace = std::nullopt;
+
       gzmsg << "Cable transitioning to ATTACH_TO_PORT_CONN_0 state."
             << std::endl;
       this->cableState = CableState::ATTACH_TO_PORT_CONN_0;
@@ -218,22 +264,16 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
   }
 
   if (this->cableState == CableState::ATTACH_TO_PORT_CONN_0) {
-    this->cableConnectionPortSubs.clear();
-    this->attachCableConnectionToPort = false;
-    this->touchEventCallbackNamespace = std::nullopt;
-
-    // Find and remove the externally-created gripper joint
     Entity gripperJoint =
         this->FindGripperJoint(this->cableConnection0LinkEntity, _ecm);
-    if (gripperJoint != kNullEntity) {
-      _ecm.RequestRemoveEntity(gripperJoint);
+
+    if (gripperJoint == kNullEntity) {
+      this->detachableJointStatic0Entity =
+          this->MakeStatic(this->cableConnection0LinkEntity, true, _ecm);
+
+      gzmsg << "Cable transitioning to WAITING_CONN_1 state." << std::endl;
+      this->cableState = CableState::WAITING_CONN_1;
     }
-
-    this->detachableJointStatic0Entity =
-        this->MakeStatic(this->cableConnection0LinkEntity, true, _ecm);
-
-    gzmsg << "Cable transitioning to WAITING_CONN_1 state." << std::endl;
-    this->cableState = CableState::WAITING_CONN_1;
   }
 
   if (this->cableState == CableState::WAITING_CONN_1) {
@@ -258,6 +298,10 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
     }
 
     if (this->attachCableConnectionToPort) {
+      this->cableConnectionPortSubs.clear();
+      this->attachCableConnectionToPort = false;
+      this->touchEventCallbackNamespace = std::nullopt;
+
       gzmsg << "Cable transitioning to ATTACH_TO_PORT_CONN_1 state."
             << std::endl;
       this->cableState = CableState::ATTACH_TO_PORT_CONN_1;
@@ -265,18 +309,16 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
   }
 
   if (this->cableState == CableState::ATTACH_TO_PORT_CONN_1) {
-    // Find and remove the externally-created gripper joint
     Entity gripperJoint =
         this->FindGripperJoint(this->cableConnection1LinkEntity, _ecm);
-    if (gripperJoint != kNullEntity) {
-      _ecm.RequestRemoveEntity(gripperJoint);
+
+    if (gripperJoint == kNullEntity) {
+      this->detachableJointStatic1Entity =
+          this->MakeStatic(this->cableConnection1LinkEntity, true, _ecm);
+
+      gzmsg << "Cable transitioning to NEXT_CABLE state." << std::endl;
+      this->cableState = CableState::NEXT_CABLE;
     }
-
-    this->detachableJointStatic1Entity =
-        this->MakeStatic(this->cableConnection1LinkEntity, true, _ecm);
-
-    gzmsg << "Cable transitioning to NEXT_CABLE state." << std::endl;
-    this->cableState = CableState::NEXT_CABLE;
   }
 
   if (this->cableState == CableState::NEXT_CABLE) {
@@ -409,9 +451,9 @@ Entity CableModeratorPlugin::FindGripperJoint(
             (info.parentLink == _connectionLinkEntity &&
              info.childLink == this->endEffectorLinkEntity)) {
           result = _entity;
-          return false;  // stop iteration
+          return false;
         }
-        return true;  // continue
+        return true;
       });
   return result;
 }
@@ -489,6 +531,18 @@ bool CableModeratorPlugin::ToggleActiveCable(
   if (this->cableConnection0LinkEntity == kNullEntity ||
       this->cableConnection1LinkEntity == kNullEntity)
     return false;
+
+  this->manualGraspSubs.clear();
+
+  auto cbAttach0 = std::function<void(const gz::msgs::Empty&)>([this](const gz::msgs::Empty&) { this->attachEnd0Requested = true; });
+  auto cbDetach0 = std::function<void(const gz::msgs::Empty&)>([this](const gz::msgs::Empty&) { this->detachEnd0Requested = true; });
+  auto cbAttach1 = std::function<void(const gz::msgs::Empty&)>([this](const gz::msgs::Empty&) { this->attachEnd1Requested = true; });
+  auto cbDetach1 = std::function<void(const gz::msgs::Empty&)>([this](const gz::msgs::Empty&) { this->detachEnd1Requested = true; });
+
+  this->manualGraspSubs.emplace_back(this->node.CreateSubscriber("/" + cableModelName + "/attach_end_0", cbAttach0));
+  this->manualGraspSubs.emplace_back(this->node.CreateSubscriber("/" + cableModelName + "/detach_end_0", cbDetach0));
+  this->manualGraspSubs.emplace_back(this->node.CreateSubscriber("/" + cableModelName + "/attach_end_1", cbAttach1));
+  this->manualGraspSubs.emplace_back(this->node.CreateSubscriber("/" + cableModelName + "/detach_end_1", cbDetach1));
 
   this->cableIndex++;
 

@@ -142,6 +142,10 @@ namespace aic_gazebo
         gz::sim::Entity _connectionLinkEntity,
         const gz::sim::EntityComponentManager& _ecm) const;
 
+    /// \brief Process any pending manual attach/detach requests
+    /// \param[in] _ecm Entity Component Manager
+    private: void ProcessManualGraspRequests(gz::sim::EntityComponentManager& _ecm);
+
     /// \brief Toggle active cable. Done by setting internal vairables to keep
     /// track of the connection link entities of the next cable in the queue
     /// \param[in] _ecm Entity Component Manager
@@ -218,6 +222,17 @@ namespace aic_gazebo
 
     /// \brief Static entities created by this plugin
     private: std::unordered_set<gz::sim::Entity> staticEntities;
+
+    /// \brief Flags for manual attach/detach of connection 0
+    private: std::atomic<bool> attachEnd0Requested{false};
+    private: std::atomic<bool> detachEnd0Requested{false};
+
+    /// \brief Flags for manual attach/detach of connection 1
+    private: std::atomic<bool> attachEnd1Requested{false};
+    private: std::atomic<bool> detachEnd1Requested{false};
+
+    /// \brief Manual grasp subscribers
+    private: std::vector<gz::transport::Node::Subscriber> manualGraspSubs;
 };
 }
 #endif
