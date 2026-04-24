@@ -30,8 +30,7 @@
 #include <gz/sim/components/Model.hh>
 #include <gz/sim/components/Name.hh>
 #include <gz/sim/components/ParentEntity.hh>
-#include <gz/sim/components/Pose.hh>
-#include <gz/sim/components/PoseCmd.hh>
+
 #include <gz/sim/components/World.hh>
 
 using namespace gz;
@@ -45,10 +44,6 @@ GZ_ADD_PLUGIN(aic_gazebo::CableModeratorPlugin, gz::sim::System,
               aic_gazebo::CableModeratorPlugin::ISystemReset)
 
 namespace {
-
-/// \brief Default offset of gripper grasping point w.r.t. the end effector.
-const gz::math::Pose3d kEndEffectorOffset =
-    gz::math::Pose3d(0, 0.0, 0.165, 0, 0, 0);
 
 /// \brief Find link in a model
 /// \param[in] _modelName Name of model
@@ -159,16 +154,6 @@ void CableModeratorPlugin::Configure(
     return;
   }
 
-  this->endEffectorOffset =
-      _sdf->Get<math::Pose3d>("end_effector_offset", kEndEffectorOffset).first;
-
-  if (_sdf->HasElement("grasp_distance_threshold")) {
-    this->graspDistanceThreshold =
-        _sdf->Get<double>("grasp_distance_threshold",
-                          this->graspDistanceThreshold)
-            .first;
-  }
-
   this->creator = std::make_unique<SdfEntityCreator>(_ecm, _eventManager);
 
   this->taskCompletionPub = this->node.Advertise<gz::msgs::StringMsg>(
@@ -205,8 +190,14 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
   }
 
   if (this->cableState == CableState::WAITING_CONN_0) {
-    if (this->HandleGrasping(this->cableConnection0LinkEntity,
-                             this->detachableJointStatic0Entity, _ecm)) {
+    Entity gripperJoint =
+        this->FindGripperJoint(this->cableConnection0LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      // External plugin has grasped connection 0 - remove the static hold
+      if (this->detachableJointStatic0Entity != kNullEntity) {
+        _ecm.RequestRemoveEntity(this->detachableJointStatic0Entity);
+        this->detachableJointStatic0Entity = kNullEntity;
+      }
       gzmsg << "Cable transitioning to ATTACHED_TO_GRIPPER_CONN_0 state."
             << std::endl;
       this->cableState = CableState::ATTACHED_TO_GRIPPER_CONN_0;
@@ -230,9 +221,12 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
     this->cableConnectionPortSubs.clear();
     this->attachCableConnectionToPort = false;
     this->touchEventCallbackNamespace = std::nullopt;
-    if (this->detachableJointGripperConnEntity != kNullEntity) {
-      _ecm.RequestRemoveEntity(this->detachableJointGripperConnEntity);
-      this->detachableJointGripperConnEntity = kNullEntity;
+
+    // Find and remove the externally-created gripper joint
+    Entity gripperJoint =
+        this->FindGripperJoint(this->cableConnection0LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      _ecm.RequestRemoveEntity(gripperJoint);
     }
 
     this->detachableJointStatic0Entity =
@@ -243,8 +237,14 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
   }
 
   if (this->cableState == CableState::WAITING_CONN_1) {
-    if (this->HandleGrasping(this->cableConnection1LinkEntity,
-                             this->detachableJointStatic1Entity, _ecm)) {
+    Entity gripperJoint =
+        this->FindGripperJoint(this->cableConnection1LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      // External plugin has grasped connection 1 - remove the static hold
+      if (this->detachableJointStatic1Entity != kNullEntity) {
+        _ecm.RequestRemoveEntity(this->detachableJointStatic1Entity);
+        this->detachableJointStatic1Entity = kNullEntity;
+      }
       gzmsg << "Cable transitioning to ATTACHED_TO_GRIPPER_CONN_1 state."
             << std::endl;
       this->cableState = CableState::ATTACHED_TO_GRIPPER_CONN_1;
@@ -265,9 +265,11 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& /*_info*/,
   }
 
   if (this->cableState == CableState::ATTACH_TO_PORT_CONN_1) {
-    if (this->detachableJointGripperConnEntity != kNullEntity) {
-      _ecm.RequestRemoveEntity(this->detachableJointGripperConnEntity);
-      this->detachableJointGripperConnEntity = kNullEntity;
+    // Find and remove the externally-created gripper joint
+    Entity gripperJoint =
+        this->FindGripperJoint(this->cableConnection1LinkEntity, _ecm);
+    if (gripperJoint != kNullEntity) {
+      _ecm.RequestRemoveEntity(gripperJoint);
     }
 
     this->detachableJointStatic1Entity =
@@ -326,8 +328,6 @@ void CableModeratorPlugin::Cleanup(gz::sim::EntityComponentManager& _ecm) {
     _ecm.RequestRemoveEntity(this->detachableJointStatic0Entity);
   if (this->detachableJointStatic1Entity != kNullEntity)
     _ecm.RequestRemoveEntity(this->detachableJointStatic1Entity);
-  if (this->detachableJointGripperConnEntity != kNullEntity)
-    _ecm.RequestRemoveEntity(this->detachableJointGripperConnEntity);
 
   for (const auto& ent : this->staticEntities) {
     if (ent != kNullEntity) {
@@ -394,30 +394,26 @@ Entity CableModeratorPlugin::MakeStatic(Entity _entity,
 }
 
 //////////////////////////////////////////////////
-bool CableModeratorPlugin::HandleGrasping(
+Entity CableModeratorPlugin::FindGripperJoint(
     gz::sim::Entity _connectionLinkEntity,
-    gz::sim::Entity& _detachableJointStaticEntity,
-    gz::sim::EntityComponentManager& _ecm) {
-  auto eeLinkWorldPose = gz::sim::worldPose(this->endEffectorLinkEntity, _ecm);
-  auto eeLinkOffsetWorldPose = eeLinkWorldPose * this->endEffectorOffset;
-  auto connPose = gz::sim::worldPose(_connectionLinkEntity, _ecm);
-
-  if (eeLinkOffsetWorldPose.Pos().Distance(connPose.Pos()) <
-      this->graspDistanceThreshold) {
-    // TODO(anyone) Add check for gripper joint state to make sure it is closed.
-    if (_detachableJointStaticEntity != kNullEntity) {
-      _ecm.RequestRemoveEntity(_detachableJointStaticEntity);
-      _detachableJointStaticEntity = kNullEntity;
-    }
-
-    this->detachableJointGripperConnEntity = _ecm.CreateEntity();
-    _ecm.CreateComponent(
-        this->detachableJointGripperConnEntity,
-        components::DetachableJoint(
-            {this->endEffectorLinkEntity, _connectionLinkEntity, "fixed"}));
-    return true;
-  }
-  return false;
+    const gz::sim::EntityComponentManager& _ecm) const {
+  Entity result = kNullEntity;
+  _ecm.Each<components::DetachableJoint>(
+      [&](const Entity& _entity,
+          const components::DetachableJoint* _joint) -> bool {
+        const auto& info = _joint->Data();
+        // Check if this joint connects the end-effector to the connection link
+        // (in either parent/child order)
+        if ((info.parentLink == this->endEffectorLinkEntity &&
+             info.childLink == _connectionLinkEntity) ||
+            (info.parentLink == _connectionLinkEntity &&
+             info.childLink == this->endEffectorLinkEntity)) {
+          result = _entity;
+          return false;  // stop iteration
+        }
+        return true;  // continue
+      });
+  return result;
 }
 
 //////////////////////////////////////////////////

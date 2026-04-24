@@ -133,15 +133,14 @@ namespace aic_gazebo
                              bool _attachEntityAsParentOfJoint,
                              gz::sim::EntityComponentManager& _ecm);
 
-    /// \brief Check end effector distance to connection and handle grasping
-    /// \param[in] _connectionLinkEntity The connection link to check
-    /// \param[in, out] _detachableJointStaticEntity The static joint holding
-    ///  it (removed if grasped)
+    /// \brief Find a detachable joint created by an external plugin that
+    /// connects the end-effector link to the given connection link.
+    /// \param[in] _connectionLinkEntity The cable connection link to check
     /// \param[in] _ecm Entity Component Manager
-    /// \return True if grasped, false otherwise
-    private: bool HandleGrasping(gz::sim::Entity _connectionLinkEntity,
-                                 gz::sim::Entity& _detachableJointStaticEntity,
-                                 gz::sim::EntityComponentManager& _ecm);
+    /// \return Entity of the gripper joint if found, kNullEntity otherwise
+    private: gz::sim::Entity FindGripperJoint(
+        gz::sim::Entity _connectionLinkEntity,
+        const gz::sim::EntityComponentManager& _ecm) const;
 
     /// \brief Toggle active cable. Done by setting internal vairables to keep
     /// track of the connection link entities of the next cable in the queue
@@ -166,9 +165,7 @@ namespace aic_gazebo
     /// \brief Connection 1 link entity in the cable model
     private: gz::sim::Entity cableConnection1LinkEntity{gz::sim::kNullEntity};
 
-    /// \brief Detachable joint entity for gripper connection
-    private: gz::sim::Entity detachableJointGripperConnEntity{
-        gz::sim::kNullEntity};
+
 
     /// \brief Detachable joint entity for making cable connection 0 static
     private: gz::sim::Entity detachableJointStatic0Entity{gz::sim::kNullEntity};
@@ -185,9 +182,6 @@ namespace aic_gazebo
     /// \brief Index of cable model that is currently active.
     private: std::size_t cableIndex{0u};
 
-    /// \brief Entity offset for end effector
-    private: gz::math::Pose3d endEffectorOffset;
-
     /// \brief Entities of the cable models
     private: std::vector<gz::sim::Entity> cableModels;
 
@@ -196,9 +190,6 @@ namespace aic_gazebo
 
     /// \brief Name of the end effector link
     private: std::string endEffectorLinkName;
-
-    /// \brief Distance threshold for grasping the cable connection
-    private: double graspDistanceThreshold{0.05};
 
     /// \brief Sdf entity creator for spawning static entities
     /// Used for holding cable connections in place
