@@ -17,91 +17,112 @@
   <xacro:arg name="yaw" default="-3.141"/>
 
   <!-- LC Mount Rail 0: X=0.0275, Y=-0.10625 (left side, mount rail). LC mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="lc_mount_rail_0_present" default="false"/>
+  <xacro:arg name="lc_mount_rail_0_present" default="true"/>
   <xacro:arg name="lc_mount_rail_0_translation" default="0.0"/>
   <xacro:arg name="lc_mount_rail_0_roll" default="0.0"/>
   <xacro:arg name="lc_mount_rail_0_pitch" default="0.0"/>
   <xacro:arg name="lc_mount_rail_0_yaw" default="0.0"/>
 
   <!-- SFP Mount Rail 0: X=0.0535, Y=-0.10625 (left side, mount rail). SFP mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="sfp_mount_rail_0_present" default="false"/>
+  <xacro:arg name="sfp_mount_rail_0_present" default="true"/>
   <xacro:arg name="sfp_mount_rail_0_translation" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_0_roll" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_0_pitch" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_0_yaw" default="0.0"/>
 
   <!-- SC Mount Rail 0: X=0.0985, Y=-0.10625 (left side, mount rail). SC mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="sc_mount_rail_0_present" default="false"/>
+  <xacro:arg name="sc_mount_rail_0_present" default="true"/>
   <xacro:arg name="sc_mount_rail_0_translation" default="0.0"/>
   <xacro:arg name="sc_mount_rail_0_roll" default="0.0"/>
   <xacro:arg name="sc_mount_rail_0_pitch" default="0.0"/>
   <xacro:arg name="sc_mount_rail_0_yaw" default="0.0"/>
 
   <!-- LC Mount Rail 1: X=0.0275, Y=0.10625 (right side, mount rail). LC mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="lc_mount_rail_1_present" default="false"/>
+  <xacro:arg name="lc_mount_rail_1_present" default="true"/>
   <xacro:arg name="lc_mount_rail_1_translation" default="0.0"/>
   <xacro:arg name="lc_mount_rail_1_roll" default="0.0"/>
   <xacro:arg name="lc_mount_rail_1_pitch" default="0.0"/>
   <xacro:arg name="lc_mount_rail_1_yaw" default="0.0"/>
 
   <!-- SFP Mount Rail 1: X=0.0535, Y=0.10625 (right side, mount rail). SFP mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="sfp_mount_rail_1_present" default="false"/>
+  <xacro:arg name="sfp_mount_rail_1_present" default="true"/>
   <xacro:arg name="sfp_mount_rail_1_translation" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_1_roll" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_1_pitch" default="0.0"/>
   <xacro:arg name="sfp_mount_rail_1_yaw" default="0.0"/>
 
   <!-- SC Mount Rail 1: X=0.0985, Y=0.10625 (right side, mount rail). SC mounts can be translated [-0.09625, 0.09625] along Y axis (rail direction) -->
-  <xacro:arg name="sc_mount_rail_1_present" default="false"/>
+  <xacro:arg name="sc_mount_rail_1_present" default="true"/>
   <xacro:arg name="sc_mount_rail_1_translation" default="0.0"/>
   <xacro:arg name="sc_mount_rail_1_roll" default="0.0"/>
   <xacro:arg name="sc_mount_rail_1_pitch" default="0.0"/>
   <xacro:arg name="sc_mount_rail_1_yaw" default="0.0"/>
 
   <!-- SC Port 0 -->
-  <xacro:arg name="sc_port_0_present" default="false"/>
+  <xacro:arg name="sc_port_0_present" default="true"/>
   <xacro:arg name="sc_port_0_translation" default="0.0"/>
   <xacro:arg name="sc_port_0_roll" default="0.0"/>
   <xacro:arg name="sc_port_0_pitch" default="0.0"/>
   <xacro:arg name="sc_port_0_yaw" default="0.0"/>
 
   <!-- SC Port 1 -->
-  <xacro:arg name="sc_port_1_present" default="false"/>
+  <xacro:arg name="sc_port_1_present" default="true"/>
   <xacro:arg name="sc_port_1_translation" default="0.0"/>
   <xacro:arg name="sc_port_1_roll" default="0.0"/>
   <xacro:arg name="sc_port_1_pitch" default="0.0"/>
   <xacro:arg name="sc_port_1_yaw" default="0.0"/>
 
+  <!-- SC Port 2 -->
+  <xacro:arg name="sc_port_2_present" default="true"/>
+  <xacro:arg name="sc_port_2_translation" default="0.0"/>
+  <xacro:arg name="sc_port_2_roll" default="0.0"/>
+  <xacro:arg name="sc_port_2_pitch" default="0.0"/>
+  <xacro:arg name="sc_port_2_yaw" default="0.0"/>
+
+  <!-- SC Port 3 -->
+  <xacro:arg name="sc_port_3_present" default="true"/>
+  <xacro:arg name="sc_port_3_translation" default="0.0"/>
+  <xacro:arg name="sc_port_3_roll" default="0.0"/>
+  <xacro:arg name="sc_port_3_pitch" default="0.0"/>
+  <xacro:arg name="sc_port_3_yaw" default="0.0"/>
+
+  <!-- SC Port 4 -->
+  <xacro:arg name="sc_port_4_present" default="true"/>
+  <xacro:arg name="sc_port_4_translation" default="0.0"/>
+  <xacro:arg name="sc_port_4_roll" default="0.0"/>
+  <xacro:arg name="sc_port_4_pitch" default="0.0"/>
+  <xacro:arg name="sc_port_4_yaw" default="0.0"/>
+
   <!-- NIC Card Mount 0 -->
-  <xacro:arg name="nic_card_mount_0_present" default="false"/>
+  <xacro:arg name="nic_card_mount_0_present" default="true"/>
   <xacro:arg name="nic_card_mount_0_translation" default="0.0"/>
   <xacro:arg name="nic_card_mount_0_roll" default="0.0"/>
   <xacro:arg name="nic_card_mount_0_pitch" default="0.0"/>
   <xacro:arg name="nic_card_mount_0_yaw" default="0.0"/>
 
   <!-- NIC Card Mount 1 -->
-  <xacro:arg name="nic_card_mount_1_present" default="false"/>
+  <xacro:arg name="nic_card_mount_1_present" default="true"/>
   <xacro:arg name="nic_card_mount_1_translation" default="0.0"/>
   <xacro:arg name="nic_card_mount_1_roll" default="0.0"/>
   <xacro:arg name="nic_card_mount_1_pitch" default="0.0"/>
   <xacro:arg name="nic_card_mount_1_yaw" default="0.0"/>
 
   <!-- NIC Card Mount 2 -->
-  <xacro:arg name="nic_card_mount_2_present" default="false"/>
+  <xacro:arg name="nic_card_mount_2_present" default="true"/>
   <xacro:arg name="nic_card_mount_2_translation" default="0.0"/>
   <xacro:arg name="nic_card_mount_2_roll" default="0.0"/>
   <xacro:arg name="nic_card_mount_2_pitch" default="0.0"/>
   <xacro:arg name="nic_card_mount_2_yaw" default="0.0"/>
 
   <!-- NIC Card Mount 3 -->
-  <xacro:arg name="nic_card_mount_3_present" default="false"/>
+  <xacro:arg name="nic_card_mount_3_present" default="true"/>
   <xacro:arg name="nic_card_mount_3_translation" default="0.0"/>
   <xacro:arg name="nic_card_mount_3_roll" default="0.0"/>
   <xacro:arg name="nic_card_mount_3_pitch" default="0.0"/>
   <xacro:arg name="nic_card_mount_3_yaw" default="0.0"/>
 
   <!-- NIC Card Mount 4 -->
-  <xacro:arg name="nic_card_mount_4_present" default="false"/>
+  <xacro:arg name="nic_card_mount_4_present" default="true"/>
   <xacro:arg name="nic_card_mount_4_translation" default="0.0"/>
   <xacro:arg name="nic_card_mount_4_roll" default="0.0"/>
   <xacro:arg name="nic_card_mount_4_pitch" default="0.0"/>
@@ -189,11 +210,44 @@
 
   <!-- SC Port 1 -->
   <xacro:if value="$(arg sc_port_1_present)">
-    <xacro:sc_port prefix="sc_port_1" pose="${-0.075 + $(arg sc_port_1_translation)} 0.0705 0.0165 ${1.57 + $(arg sc_port_1_roll)} $(arg sc_port_1_pitch) ${1.57 + $(arg sc_port_1_yaw)}"/>
+    <xacro:sc_port prefix="sc_port_1" pose="${-0.055 + $(arg sc_port_1_translation)} 0.0295 0.0165 ${1.57 + $(arg sc_port_1_roll)} $(arg sc_port_1_pitch) ${1.57 + $(arg sc_port_1_yaw)}"/>
     <gazebo>
       <joint name="sc_port_1_joint" type="fixed">
         <parent>task_board_base_link</parent>
         <child>sc_port_1::sc_port_link</child>
+      </joint>
+    </gazebo>
+  </xacro:if>
+
+  <!-- SC Port 2 -->
+  <xacro:if value="$(arg sc_port_2_present)">
+    <xacro:sc_port prefix="sc_port_2" pose="${-0.035 + $(arg sc_port_2_translation)} 0.0295 0.0165 ${1.57 + $(arg sc_port_2_roll)} $(arg sc_port_2_pitch) ${1.57 + $(arg sc_port_2_yaw)}"/>
+    <gazebo>
+      <joint name="sc_port_2_joint" type="fixed">
+        <parent>task_board_base_link</parent>
+        <child>sc_port_2::sc_port_link</child>
+      </joint>
+    </gazebo>
+  </xacro:if>
+
+  <!-- SC Port 3 -->
+  <xacro:if value="$(arg sc_port_3_present)">
+    <xacro:sc_port prefix="sc_port_3" pose="${-0.075 + $(arg sc_port_3_translation)} 0.0705 0.0165 ${1.57 + $(arg sc_port_3_roll)} $(arg sc_port_3_pitch) ${1.57 + $(arg sc_port_3_yaw)}"/>
+    <gazebo>
+      <joint name="sc_port_3_joint" type="fixed">
+        <parent>task_board_base_link</parent>
+        <child>sc_port_3::sc_port_link</child>
+      </joint>
+    </gazebo>
+  </xacro:if>
+
+  <!-- SC Port 4 -->
+  <xacro:if value="$(arg sc_port_4_present)">
+    <xacro:sc_port prefix="sc_port_4" pose="${-0.055 + $(arg sc_port_4_translation)} 0.0705 0.0165 ${1.57 + $(arg sc_port_4_roll)} $(arg sc_port_4_pitch) ${1.57 + $(arg sc_port_4_yaw)}"/>
+    <gazebo>
+      <joint name="sc_port_4_joint" type="fixed">
+        <parent>task_board_base_link</parent>
+        <child>sc_port_4::sc_port_link</child>
       </joint>
     </gazebo>
   </xacro:if>

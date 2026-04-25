@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package ai.flowstate;
+
+message ComponentStateProto {
+  bool entity_present = 1;
+  string entity_name = 2;
+  double translation = 3;
+  double roll = 4;
+  double pitch = 5;
+  double yaw = 6;
+}
+
+message GetTaskboardStateSkillResult {
+  bool success = 1;
+  string message = 2;
+  
+  double task_board_x = 3;
+  double task_board_y = 4;
+  double task_board_z = 5;
+  double task_board_roll = 6;
+  double task_board_pitch = 7;
+  double task_board_yaw = 8;
+
+  ComponentStateProto nic_rail_0 = 9;
+  ComponentStateProto nic_rail_1 = 10;
+  ComponentStateProto nic_rail_2 = 11;
+  ComponentStateProto nic_rail_3 = 12;
+  ComponentStateProto nic_rail_4 = 13;
+  ComponentStateProto sc_rail_0 = 14;
+  ComponentStateProto sc_rail_1 = 15;
+  ComponentStateProto lc_mount_rail_0 = 16;
+  ComponentStateProto sfp_mount_rail_0 = 17;
+  ComponentStateProto sc_mount_rail_0 = 18;
+  ComponentStateProto lc_mount_rail_1 = 19;
+  ComponentStateProto sfp_mount_rail_1 = 20;
+  ComponentStateProto sc_mount_rail_1 = 21;
+}

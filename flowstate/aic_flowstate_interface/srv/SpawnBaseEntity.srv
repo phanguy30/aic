@@ -1,0 +1,10 @@
+dbool entity_present         # True to spawn/update, false to remove
+float64 x                   # Absolute X position
+float64 y                   # Absolute Y position
+float64 z                   # Absolute Z position
+float64 roll                # Absolute Roll
+float64 pitch               # Absolute Pitch
+float64 yaw                 # Absolute Yaw
+---
+bool success                # True if operation successful
+string message              # Status message

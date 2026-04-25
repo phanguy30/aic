@@ -1,0 +1,23 @@
+# Request
+---
+# Response
+float64 task_board_x
+float64 task_board_y
+float64 task_board_z
+float64 task_board_roll
+float64 task_board_pitch
+float64 task_board_yaw
+
+ComponentState nic_rail_0
+ComponentState nic_rail_1
+ComponentState nic_rail_2
+ComponentState nic_rail_3
+ComponentState nic_rail_4
+ComponentState sc_rail_0
+ComponentState sc_rail_1
+ComponentState lc_mount_rail_0
+ComponentState sfp_mount_rail_0
+ComponentState sc_mount_rail_0
+ComponentState lc_mount_rail_1
+ComponentState sfp_mount_rail_1
+ComponentState sc_mount_rail_1

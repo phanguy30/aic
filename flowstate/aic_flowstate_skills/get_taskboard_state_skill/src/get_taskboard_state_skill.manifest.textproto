@@ -1,0 +1,28 @@
+id {
+  package: "ai.flowstate"
+  name: "get_taskboard_state_skill"
+}
+display_name: "Get Taskboard State Skill"
+vendor {
+  display_name: "Intrinsic"
+}
+documentation {
+  description: "Skill that queries the taskboard state server via ROS 2."
+}
+options {
+  supports_cancellation: false
+  cc_config {
+    create_skill: "::GetTaskboardStateSkill::CreateSkill"
+  }
+}
+dependencies {
+}
+parameter {
+  message_full_name: "ai.flowstate.GetTaskboardStateSkillParams"
+  default_value: {
+    type_url: "type.googleapis.com/ai.flowstate.GetTaskboardStateSkillParams"
+  }
+}
+return_type {
+  message_full_name: "ai.flowstate.GetTaskboardStateSkillResult"
+}
