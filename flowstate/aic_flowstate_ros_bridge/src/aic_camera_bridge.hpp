@@ -48,8 +48,10 @@ class AicCameraBridge : public BridgeInterface {
     std::shared_ptr<intrinsic::PubSub> pubsub_;
     std::shared_ptr<intrinsic::Subscription> image_sub_;
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> left_image_pub_;
-    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> center_image_pub_;
-    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>> right_image_pub_;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>>
+        center_image_pub_;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>>
+        right_image_pub_;
 
     Data();
     ~Data();

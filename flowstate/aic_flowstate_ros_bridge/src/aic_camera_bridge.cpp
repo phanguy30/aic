@@ -75,35 +75,36 @@ bool AicCameraBridge::initialize(
       data_->node_interfaces_.get<rclcpp::node_interfaces::NodeBaseInterface>()
           ->get_name());
 
+  std::shared_ptr<rclcpp::node_interfaces::NodeTopicsInterface>
+      topics_interface =
+          data_->node_interfaces_
+              .get<rclcpp::node_interfaces::NodeTopicsInterface>();
+
+  // Reliable QoS subscriptions for motion commands.
+  rclcpp::QoS image_pub_qos = rclcpp::QoS(rclcpp::KeepLast(2)).reliable();
+
+  data_->left_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
+      topics_interface, "/left_camera/image", image_pub_qos);
+  data_->center_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
+      topics_interface, "/center_camera/image", image_pub_qos);
+  data_->right_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
+      topics_interface, "/right_camera/image", image_pub_qos);
+
   // Create a Zenoh subscriber on the robot_state pubsub topic
-  auto image_sub = data_->pubsub_->CreateSubscription<sensor_msgs::msg::pb::jazzy::Image>(
-      "cameras/*/image", intrinsic::TopicConfig(),
-      [this](const sensor_msgs::msg::pb::jazzy::Image& image_msg) {
-        this->ImageCallback(image_msg);
-      });
+  auto image_sub =
+      data_->pubsub_->CreateSubscription<sensor_msgs::msg::pb::jazzy::Image>(
+          "cameras/*/image", intrinsic::TopicConfig(),
+          [this](const sensor_msgs::msg::pb::jazzy::Image& image_msg) {
+            this->ImageCallback(image_msg);
+          });
   if (!image_sub.ok()) {
     LOG(ERROR) << "Unable to create Flowstate image subscription: "
                << image_sub.status();
     return false;
   }
   LOG(INFO) << "Subscribed to Flowstate camera image topics";
-  data_->image_sub_ = std::make_shared<intrinsic::Subscription>(std::move(*image_sub));
-
-  std::shared_ptr<rclcpp::node_interfaces::NodeTopicsInterface>
-      topics_interface =
-          data_->node_interfaces_
-              .get<rclcpp::node_interfaces::NodeTopicsInterface>();
-  std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> base_interface =
-      data_->node_interfaces_.get<rclcpp::node_interfaces::NodeBaseInterface>();
-  auto clock = data_->node_interfaces_
-                   .get<rclcpp::node_interfaces::NodeClockInterface>()
-                   ->get_clock();
-
-  // Reliable QoS subscriptions for motion commands.
-  rclcpp::QoS image_pub_qos = rclcpp::QoS(rclcpp::KeepLast(2)).reliable();
-
-  data_->center_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
-      topics_interface, "/center_camera/image", image_pub_qos);
+  data_->image_sub_ =
+      std::make_shared<intrinsic::Subscription>(std::move(*image_sub));
 
   LOG(INFO) << "Initialized AicCameraBridge.";
 
@@ -113,7 +114,6 @@ bool AicCameraBridge::initialize(
 ///=============================================================================
 void AicCameraBridge::ImageCallback(
     const sensor_msgs::msg::pb::jazzy::Image& image) {
-  LOG(INFO) << "ImageCallback() image.header.frame_id: " << image.header().frame_id();
 
   const absl::Time start_time = absl::Now();
   sensor_msgs::msg::Image ros_image;
@@ -144,7 +144,7 @@ void AicCameraBridge::ImageCallback(
     center_callback_count++;
     if (center_callback_count % 100 == 0) {
       LOG(INFO) << absl::StrFormat(
-          "TIME TO POPULATE ROS IMAGE FOR CENTER CAMERA: %.6F SECONDS",
+          "center camera translation duration: %.6f seconds",
           absl::ToDoubleSeconds(duration));
     }
     data_->center_image_pub_->publish(ros_image);
