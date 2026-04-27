@@ -230,12 +230,26 @@ void CableModeratorPlugin::MakeCableStatic(
 void CableModeratorPlugin::MakeCableDynamic(
     size_t _cableIndex,
     gz::sim::EntityComponentManager& _ecm) {
+  // Remove the joints
   for (const Entity& jointEntity : this->cableTrackers[_cableIndex].frozenJoints) {
     if (jointEntity != kNullEntity) {
       _ecm.RequestRemoveEntity(jointEntity);
     }
   }
   this->cableTrackers[_cableIndex].frozenJoints.clear();
+
+  // Remove the static models
+  auto links = Model(this->cableTrackers[_cableIndex].modelEntity).Links(_ecm);
+  for (const Entity& linkEntity : links) {
+    auto nameComp = _ecm.Component<components::Name>(linkEntity);
+    auto parentComp = _ecm.Component<components::ParentEntity>(linkEntity);
+    auto parentNameComp = _ecm.Component<components::Name>(parentComp->Data());
+    std::string staticEntName = nameComp->Data() + "_" + parentNameComp->Data() + "__static__";
+    Entity staticEntity = _ecm.EntityByComponents(components::Name(staticEntName));
+    if (staticEntity != kNullEntity) {
+      _ecm.RequestRemoveEntity(staticEntity);
+    }
+  }
 }
 
 //////////////////////////////////////////////////
