@@ -38,227 +38,23 @@
 namespace aic {
 
 //==============================================================================
-Trial::Trial(const std::string& _id, YAML::Node _config) : id(std::move(_id)) {
-  // Validate config structure
-  if (!_config["scene"]) {
-    throw std::runtime_error("Config missing required key: 'scene'");
+YAML::Node Score::serialize() const {
+  const double total_score = this->calculate_total_score();
+  YAML::Node score;
+  score["total"] = total_score;
+  score["milestone_0"] = this->tier_1.to_yaml();
+  for (const auto& [trial_name, trial_score] : this->breakdown) {
+    score[trial_name] = trial_score.to_yaml();
   }
-  if (!_config["tasks"]) {
-    throw std::runtime_error("Config missing required key: 'tasks'");
-  }
-
-  const auto& scene = _config["scene"];
-
-  // Validate scene.task_board
-  if (!scene["task_board"]) {
-    throw std::runtime_error("Config missing required key: 'scene.task_board'");
-  }
-  const auto& task_board = scene["task_board"];
-  if (!task_board["pose"]) {
-    throw std::runtime_error(
-        "Config missing required key: 'scene.task_board.pose'");
-  }
-  const auto& task_board_pose = task_board["pose"];
-  for (const auto& key : {"x", "y", "z", "roll", "pitch", "yaw"}) {
-    if (!task_board_pose[key]) {
-      throw std::runtime_error(
-          std::string("Config missing required key: 'scene.task_board.pose.") +
-          key + "'");
-    }
-  }
-
-  // Validate NIC rails (nic_rail_0 through nic_rail_4)
-  for (int i = 0; i < 5; ++i) {
-    std::string rail_key = "nic_rail_" + std::to_string(i);
-    if (!task_board[rail_key]) {
-      throw std::runtime_error(
-          "Config missing required key: 'scene.task_board." + rail_key + "'");
-    }
-    const auto& rail = task_board[rail_key];
-    if (!rail["entity_present"]) {
-      throw std::runtime_error(
-          "Config missing required key: 'scene.task_board." + rail_key +
-          ".entity_present'");
-    }
-    if (rail["entity_present"].as<bool>()) {
-      if (!rail["entity_name"]) {
-        throw std::runtime_error(
-            "Config missing required key: 'scene.task_board." + rail_key +
-            ".entity_name'");
-      }
-      if (!rail["entity_pose"]) {
-        throw std::runtime_error(
-            "Config missing required key: 'scene.task_board." + rail_key +
-            ".entity_pose'");
-      }
-      const auto& entity_pose = rail["entity_pose"];
-      for (const auto& key : {"translation", "roll", "pitch", "yaw"}) {
-        if (!entity_pose[key]) {
-          throw std::runtime_error(
-              "Config missing required key: 'scene.task_board." + rail_key +
-              ".entity_pose." + key + "'");
-        }
-      }
-    }
-  }
-
-  // Validate SC rails (sc_rail_0 and sc_rail_1)
-  for (int i = 0; i < 2; ++i) {
-    std::string rail_key = "sc_rail_" + std::to_string(i);
-    if (!task_board[rail_key]) {
-      throw std::runtime_error(
-          "Config missing required key: 'scene.task_board." + rail_key + "'");
-    }
-    const auto& rail = task_board[rail_key];
-    if (!rail["entity_present"]) {
-      throw std::runtime_error(
-          "Config missing required key: 'scene.task_board." + rail_key +
-          ".entity_present'");
-    }
-    if (rail["entity_present"].as<bool>()) {
-      if (!rail["entity_name"]) {
-        throw std::runtime_error(
-            "Config missing required key: 'scene.task_board." + rail_key +
-            ".entity_name'");
-      }
-      if (!rail["entity_pose"]) {
-        throw std::runtime_error(
-            "Config missing required key: 'scene.task_board." + rail_key +
-            ".entity_pose'");
-      }
-      const auto& entity_pose = rail["entity_pose"];
-      for (const auto& key : {"translation", "roll", "pitch", "yaw"}) {
-        if (!entity_pose[key]) {
-          throw std::runtime_error(
-              "Config missing required key: 'scene.task_board." + rail_key +
-              ".entity_pose." + key + "'");
-        }
-      }
-    }
-  }
-
-  // Validate rail structure if rails exist
-  for (int i = 0; i < 6; ++i) {
-    std::string rail_key = "rail_" + std::to_string(i);
-    if (task_board[rail_key]) {
-      // If rail exists and has ports, validate port structure
-      const auto& rail = task_board[rail_key];
-      if (rail["ports"]) {
-        const auto& ports = rail["ports"];
-        for (auto it = ports.begin(); it != ports.end(); ++it) {
-          const auto& port = it->second;
-          if (!port["type"]) {
-            throw std::runtime_error(
-                "Config missing required key: 'scene.task_board." + rail_key +
-                ".ports." + it->first.as<std::string>() + ".type'");
-          }
-          if (!port["entity_name"]) {
-            throw std::runtime_error(
-                "Config missing required key: 'scene.task_board." + rail_key +
-                ".ports." + it->first.as<std::string>() + ".entity_name'");
-          }
-          if (!port["entity_pose"]) {
-            throw std::runtime_error(
-                "Config missing required key: 'scene.task_board." + rail_key +
-                ".ports." + it->first.as<std::string>() + ".entity_pose'");
-          }
-          const auto& entity_pose = port["entity_pose"];
-          for (const auto& key : {"translation", "roll", "pitch", "yaw"}) {
-            if (!entity_pose[key]) {
-              throw std::runtime_error(
-                  "Config missing required key: 'scene.task_board." + rail_key +
-                  ".ports." + it->first.as<std::string>() + ".entity_pose." +
-                  key + "'");
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Validate scene.cables
-  if (!scene["cables"]) {
-    throw std::runtime_error("Config missing required key: 'scene.cables'");
-  }
-  const auto& cables = scene["cables"];
-  for (const auto& cable_it : cables) {
-    const std::string cable_id = cable_it.first.as<std::string>();
-    const YAML::Node cable = cable_it.second;
-    if (!cable["pose"]) {
-      throw std::runtime_error("Config missing required key: 'scene.cables[" +
-                               cable_id + "].pose'");
-    }
-    const auto& cable_pose = cable["pose"];
-    for (const auto& key : {"gripper_offset", "roll", "pitch", "yaw"}) {
-      if (!cable_pose[key]) {
-        throw std::runtime_error("Config missing required key: 'scene.cables[" +
-                                 cable_id + "].pose." + key + "'");
-      }
-    }
-    const auto& cable_pose_offset = cable["pose"]["gripper_offset"];
-    for (const auto& key : {"x", "y", "z"}) {
-      if (!cable_pose_offset[key]) {
-        throw std::runtime_error(
-            std::string("Config missing required key: "
-                        "'scene.cable.pose.gripper_offset.") +
-            key + "'");
-      }
-    }
-    if (!cable["attach_cable_to_gripper"]) {
-      throw std::runtime_error("Config missing required key: 'scene.cables[" +
-                               cable_id + "].attach_cable_to_gripper'");
-    }
-    if (!cable["cable_type"]) {
-      throw std::runtime_error("Config missing required key: 'scene.cables[" +
-                               cable_id + "].cable_type'");
-    }
-  }
-
-  // Validate tasks array
-  const auto& tasks = _config["tasks"];
-  if (!tasks.IsMap() || tasks.size() == 0) {
-    throw std::runtime_error("Config 'tasks' must be a non-empty dictionary");
-  }
-
-  // Validate and parse all tasks
-  for (auto it = tasks.begin(); it != tasks.end(); ++it) {
-    const std::string task_id = it->first.as<std::string>();
-    const YAML::Node task_config = it->second;
-    for (const auto& key :
-         {"cable_type", "cable_name", "plug_type", "plug_name", "port_type",
-          "port_name", "target_module_name", "time_limit"}) {
-      if (!task_config[key]) {
-        throw std::runtime_error("Config missing required key: 'tasks[" +
-                                 task_id + "]." + key + "'");
-      }
-    }
-
-    // Parse and store task
-    this->tasks.emplace_back(
-        aic_task_interfaces::build<aic_task_interfaces::msg::Task>()
-            .id(task_id)
-            .cable_type(task_config["cable_type"].as<std::string>())
-            .cable_name(task_config["cable_name"].as<std::string>())
-            .plug_type(task_config["plug_type"].as<std::string>())
-            .plug_name(task_config["plug_name"].as<std::string>())
-            .port_type(task_config["port_type"].as<std::string>())
-            .port_name(task_config["port_name"].as<std::string>())
-            .target_module_name(
-                task_config["target_module_name"].as<std::string>())
-            .time_limit(task_config["time_limit"].as<std::size_t>()));
-  }
-
-  config = _config;
+  return score;
 }
 
 //==============================================================================
-YAML::Node TrialScore::serialize() const {
-  const double total_score = this->total_score();
-  YAML::Node score;
-  score["total"] = total_score;
-  score["tier_1"] = this->tier_1.to_yaml();
-  score["tier_2"] = this->tier_2.to_yaml();
-  score["tier_3"] = this->tier_3.to_yaml();
+double Score::calculate_total_score() const {
+  double score = this->tier_1.total_score();
+  for (const auto& [trial_name, trial_score] : this->breakdown) {
+    score += trial_score.total_score();
+  }
   return score;
 }
 
@@ -355,8 +151,6 @@ void Engine::start_engine_callback(const std::shared_ptr<StartEngineSrv::Request
     return;
   }
 
-  score_ = TrialScore();
-  score_->tier_1_success();
   response->success = true;
   requested_run_ = true;
 }
@@ -429,7 +223,6 @@ std::optional<std::string> Engine::initialize(const std::string& yaml_config) {
   */
   scoring_tier2_->SetGripperFrame(
       node_->get_parameter("gripper_frame_name").as_string());
-  score_ = std::nullopt;
 
   // Create output directory for bag files.
   std::error_code ec;
@@ -492,9 +285,9 @@ void Engine::process() {
       RCLCPP_ERROR(node_->get_logger(),
                    "\033[1;31m  ✗ Tasks were not completed successfully.\033[0m");
     }
-    TrialScore score;
+    Score score;
     score.tier_1_success();
-    score_trial(score);
+    compute_score(score);
     this->score_run(score);
     reset_after_trial();
     requested_run_ = false;
@@ -503,7 +296,7 @@ void Engine::process() {
 
 //==============================================================================
 TrialResult Engine::handle_trial() {
-  TrialScore score;
+  Score score;
 
   constexpr int MAX_RETRIES = 5;
 
@@ -1101,21 +894,24 @@ Engine::~Engine() {
 }
 
 //==============================================================================
-void Engine::score_trial(TrialScore& score) {
+void Engine::compute_score(Score& score) {
   if (!scoring_tier2_->StopRecording()) {
     RCLCPP_ERROR(node_->get_logger(), "Failed to stop recording.");
     return;
   }
   auto [tier2_score, tier3_score] = scoring_tier2_->ComputeScore();
+  // TODO(luca) Change return type of scoring and fill Score here
+  /*
   score.tier_2 = tier2_score;
   score.tier_3 = tier3_score;
+  */
 
-  RCLCPP_INFO(node_->get_logger(), "Finished scoring trial, total score is: %f",
-              score.total_score());
+  RCLCPP_INFO(node_->get_logger(), "Finished scoring run, total score is: %f",
+              score.calculate_total_score());
 }
 
 //==============================================================================
-void Engine::score_run(const TrialScore& score) {
+void Engine::score_run(const Score& score) {
   YAML::Node node = score.serialize();
 
   const std::string yaml_output_file = scoring_output_dir_ + "/scoring.yaml";

@@ -66,46 +66,31 @@ using TriggerSrv = std_srvs::srv::Trigger;
 using WrenchStampedMsg = geometry_msgs::msg::WrenchStamped;
 
 //==============================================================================
-struct Trial {
-  // Constructor.
-  // Throws std::runtime_error error if config is invalid.
-  Trial(const std::string& id, YAML::Node config);
-
-  std::string id;
-  std::vector<std::string> spawned_entities;
-  YAML::Node config;
-  std::vector<Task> tasks;
-};
-
-//==============================================================================
-struct TrialScore {
+struct Score {
+  // Tier_1 done only once for the whole run
   aic_scoring::Tier1Score tier_1;
-  aic_scoring::Tier2Score tier_2;
-  aic_scoring::Tier3Score tier_3;
-
-  TrialScore()
-      : tier_1(0),
-        tier_2("Task execution failed"),
-        tier_3(0, "Task execution failed") {}
 
   void tier_1_success() { tier_1 = aic_scoring::Tier1Score(1); }
 
-  double total_score() const {
-    return tier_1.total_score() + tier_2.total_score() + tier_3.total_score();
-  }
+  // Intentionally alphabetically sorted, trial_id -> category scores
+  std::map<std::string, aic_scoring::Tier2Score> breakdown;
 
   /// \brief Serializes the score into a YAML node for logging.
   /// \return The resulting YAML node with serialized data.
   YAML::Node serialize() const;
+
+  /// \brief Computes the total score from the score breakdown.
+  double calculate_total_score() const;
 };
 
+//==============================================================================
 struct TrialResult {
-  // Score for the trial.
-  TrialScore score;
+  // Score for the run
+  Score score;
   // Error message if there was an error, std::nullopt otherwise.
   std::optional<std::string> error;
 
-  TrialResult(const TrialScore& score_, const std::optional<std::string>& error_ = std::nullopt) :
+  TrialResult(const Score& score_, const std::optional<std::string>& error_ = std::nullopt) :
     score(score_), error(error_) { }
 };
 
@@ -198,13 +183,13 @@ class Engine {
   /// @return True if cleanup succeeded, false otherwise.
   bool cleanup_model_node();
 
-  /// @brief Stop the bag recording and score the current trial
+  /// @brief Stop the bag recording and compute the current score.
   /// @param[in] A reference to the current trial score to update.
-  void score_trial(TrialScore& trial);
+  void compute_score(Score& trial);
 
-  /// @brief Scores the current run, writing its result to a YAML file.
+  /// @brief Writes the result of the current run to a YAML file.
   /// \param[in] The score to serialize and write.
-  void score_run(const TrialScore& score);
+  void score_run(const Score& score);
 
   /// @brief Wait for a future, interrupt if rclcpp Context is shut down.
   /// \param[in] The future to wait for.
@@ -288,9 +273,6 @@ class Engine {
 
   // Thread to spin ROS 2 node.
   std::thread spin_thread_;
-
-  // Score for the current run
-  std::optional<TrialScore> score_;
 
   // Whether to publish ground truth data for scoring.
   bool ground_truth_;
