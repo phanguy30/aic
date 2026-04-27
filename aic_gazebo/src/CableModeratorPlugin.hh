@@ -208,7 +208,7 @@ namespace aic_gazebo
     /// \brief The current active cable model.
     private: gz::sim::Model cableModel;
 
-    /// \brief Index of the next cable model to be activated.
+    /// \brief Index of the active cable model to be activated.
     private: std::size_t nextCableIndex{0u};
 
     /// \brief State trackers for the cable models

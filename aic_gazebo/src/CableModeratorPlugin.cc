@@ -245,22 +245,21 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& _info,
 
   if (!this->foundAllCables) {
     this->foundAllCables = this->FindCableModels(_info, _ecm);
+  }
 
-    for (size_t i = 1; i < this->cableTrackers.size(); ++i) {
-      auto& tracker = this->cableTrackers[i];
-      if (tracker.found && !tracker.frozen) {
-        auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
-            _info.simTime - tracker.foundTime);
-        if (timeSinceFound.count() >= 1) {
-          this->MakeCableStatic(i, _ecm);
-          tracker.frozen = true;
-          gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
-        }
+  for (size_t i = 1; i < this->cableTrackers.size(); ++i) {
+    auto& tracker = this->cableTrackers[i];
+    // Skip the active cable (which has index this->nextCableIndex - 1)
+    if (tracker.found && !tracker.frozen && i + 1 != this->nextCableIndex) {
+      auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
+          _info.simTime - tracker.foundTime);
+      if (timeSinceFound.count() >= 1) {
+        this->MakeCableStatic(i, _ecm);
+        tracker.frozen = true;
+        gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
       }
     }
   }
-
-  if (!this->foundAllCables) return;
 
   if (this->endEffectorLinkEntity == kNullEntity) {
     this->endEffectorLinkEntity =
@@ -576,7 +575,7 @@ bool CableModeratorPlugin::ToggleActiveCable(
     gz::sim::EntityComponentManager& _ecm) {
   // Make sure we unfreeze the newly active cable
   this->MakeCableDynamic(this->nextCableIndex, _ecm);
-  this->cableTrackers[this->nextCableIndex].frozen = false;
+  // this->cableTrackers[this->nextCableIndex].frozen = false;
 
   this->cableModel = Model(this->cableTrackers[this->nextCableIndex].modelEntity);
   const auto cableModelName = this->cableModel.Name(_ecm);
