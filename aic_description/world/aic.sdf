@@ -153,6 +153,36 @@
         <cable_connection_1_link>sc_plug_link</cable_connection_1_link>
         <cable_connection_1_port>sc_port_base</cable_connection_1_port>
       </cable>
+      <cable>
+        <name>cable_1</name>
+        <cable_connection_0_link>lc_plug_link</cable_connection_0_link>
+        <cable_connection_0_port>nic_card_mount</cable_connection_0_port>
+        <cable_connection_1_link>sc_plug_link</cable_connection_1_link>
+        <cable_connection_1_port>sc_port_base</cable_connection_1_port>
+      </cable>
+<!--      <cable>
+        <name>cable_2</name>
+        <cable_connection_0_link>lc_plug_link</cable_connection_0_link>
+        <cable_connection_0_port>nic_card_mount</cable_connection_0_port>
+        <cable_connection_1_link>sc_plug_link</cable_connection_1_link>
+        <cable_connection_1_port>sc_port_base</cable_connection_1_port>
+      </cable>
+      <cable>
+        <name>cable_3</name>
+        <cable_connection_0_link>lc_plug_link</cable_connection_0_link>
+        <cable_connection_0_port>nic_card_mount</cable_connection_0_port>
+        <cable_connection_1_link>sc_plug_link</cable_connection_1_link>
+        <cable_connection_1_port>sc_port_base</cable_connection_1_port>
+      </cable>
+      <cable>
+        <name>cable_4</name>
+        <cable_connection_0_link>lc_plug_link</cable_connection_0_link>
+        <cable_connection_0_port>nic_card_mount</cable_connection_0_port>
+        <cable_connection_1_link>sc_plug_link</cable_connection_1_link>
+        <cable_connection_1_port>sc_port_base</cable_connection_1_port>
+      </cable>
+-->
+
       <end_effector_model>ur5e</end_effector_model>
       <end_effector_link>ati/tool_link</end_effector_link>
     </plugin>
@@ -227,6 +257,49 @@
       <name>floor</name>
       <static>true</static>
     </include>
+
+    <model name="cable_1">
+      <static>true</static>
+      <pose>-0.272 -0.124 1.518 0.4432 -0.48 1.3303</pose>
+      <static>false</static>
+      <self_collide>true</self_collide>
+      <include merge="true">
+        <uri>model://sfp_sc_cable</uri>
+      </include>
+    </model>
+
+<!--    <model name="cable_2">
+      <static>true</static>
+      <pose>-0.272 -0.424 1.518 0.4432 -0.48 1.3303</pose>
+      <static>false</static>
+      <self_collide>true</self_collide>
+      <include merge="true">
+        <uri>model://sfp_sc_cable</uri>
+      </include>
+    </model>
+
+    <model name="cable_3">
+      <static>true</static>
+      <pose>-0.272 -0.524 1.518 0.4432 -0.48 1.3303</pose>
+      <static>false</static>
+      <self_collide>true</self_collide>
+      <include merge="true">
+        <uri>model://sfp_sc_cable</uri>
+      </include>
+    </model>
+
+    <model name="cable_4">
+      <static>true</static>
+      <pose>-0.272 0.224 1.518 0.4432 -0.48 1.3303</pose>
+      <static>false</static>
+      <self_collide>true</self_collide>
+      <include merge="true">
+        <uri>model://sfp_sc_cable</uri>
+      </include>
+    </model>
+-->
+
+
 
     <!-- Cable is now spawned via cable.sdf.xacro in launch file -->
     <!-- Task board and components are now spawned via task_board.urdf.xacro in launch file -->

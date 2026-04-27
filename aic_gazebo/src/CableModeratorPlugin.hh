@@ -83,6 +83,20 @@ namespace aic_gazebo
     std::string connection1PortName;
   };
 
+  /// \brief Tracker for each cable model state
+  struct CableTracker {
+    /// \brief Entity of the cable model
+    gz::sim::Entity modelEntity{gz::sim::kNullEntity};
+    /// \brief Whether the cable has been found in simulation
+    bool found{false};
+    /// \brief Simulation time when the cable was found
+    std::chrono::steady_clock::duration foundTime{0};
+    /// \brief Whether the cable has been frozen
+    bool frozen{false};
+    /// \brief Entities of the static joints used to freeze this cable
+    std::vector<gz::sim::Entity> frozenJoints;
+  };
+
   /// \brief Plugin for initializing the cable
   /// It waits for end-effector / port to be ready before creating connections
   /// with them using detachable joints.
@@ -146,15 +160,26 @@ namespace aic_gazebo
     /// \param[in] _ecm Entity Component Manager
     private: void ProcessManualGraspRequests(gz::sim::EntityComponentManager& _ecm);
 
+    /// \brief Freezes all links in the given cable in place by making them static
+    /// \param[in] _cableIndex The index of the cable to freeze
+    /// \param[in] _ecm Entity Component Manager
+    private: void MakeCableStatic(size_t _cableIndex, gz::sim::EntityComponentManager& _ecm);
+
+    /// \brief Unfreezes all links in the given cable by removing static joints
+    /// \param[in] _cableIndex The index of the cable to unfreeze
+    /// \param[in] _ecm Entity Component Manager
+    private: void MakeCableDynamic(size_t _cableIndex, gz::sim::EntityComponentManager& _ecm);
+
     /// \brief Toggle active cable. Done by setting internal vairables to keep
     /// track of the connection link entities of the next cable in the queue
     /// \param[in] _ecm Entity Component Manager
     private: bool ToggleActiveCable(
-        const gz::sim::EntityComponentManager& _ecm);
+        gz::sim::EntityComponentManager& _ecm);
 
     /// \brief Find Cable model entities based on their names
+    /// \param[in] _info Simulation update info
     /// \param[in] _ecm Entity Component Manager
-    private: bool FindCableModels(const gz::sim::EntityComponentManager& _ecm);
+    private: bool FindCableModels(const gz::sim::UpdateInfo &_info, const gz::sim::EntityComponentManager& _ecm);
 
     /// \brief Initialize port contact subscribers for the given port
     /// \param[in] _portName The name of the port to subscribe to for contacts
@@ -183,11 +208,11 @@ namespace aic_gazebo
     /// \brief The current active cable model.
     private: gz::sim::Model cableModel;
 
-    /// \brief Index of cable model that is currently active.
-    private: std::size_t cableIndex{0u};
+    /// \brief Index of the next cable model to be activated.
+    private: std::size_t nextCableIndex{0u};
 
-    /// \brief Entities of the cable models
-    private: std::vector<gz::sim::Entity> cableModels;
+    /// \brief State trackers for the cable models
+    private: std::vector<CableTracker> cableTrackers;
 
     /// \brief Name of the end effector model
     private: std::string endEffectorModelName;
