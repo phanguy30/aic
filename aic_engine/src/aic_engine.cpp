@@ -249,41 +249,16 @@ Trial::Trial(const std::string& _id, YAML::Node _config) : id(std::move(_id)) {
   }
 
   config = _config;
-  state = TrialState::Uninitialized;
 }
 
 //==============================================================================
-TaskAttempt::TaskAttempt(const std::string& _id)
-    : id(std::move(_id)),
-      time_started(std::nullopt),
-      time_completed(std::nullopt),
-      success(false),
-      state(TaskState::Uninitialized) {
-  //
-}
-
-//==============================================================================
-YAML::Node Score::serialize() const {
-  const double total_score = this->calculate_total_score();
+YAML::Node TrialScore::serialize() const {
+  const double total_score = this->total_score();
   YAML::Node score;
   score["total"] = total_score;
-  for (const auto& [trial_name, trial_score] : this->breakdown) {
-    score[trial_name]["tier_1"] = trial_score.tier_1.to_yaml();
-    score[trial_name]["tier_2"] = trial_score.tier_2.to_yaml();
-    score[trial_name]["tier_3"] = trial_score.tier_3.to_yaml();
-  }
-  return score;
-}
-
-//==============================================================================
-double Score::calculate_total_score() const {
-  // TODO(luca) check calculation
-  double score = 0;
-  for (const auto& [trial_name, trial_score] : this->breakdown) {
-    score += trial_score.tier_1.total_score();
-    score += trial_score.tier_2.total_score();
-    score += trial_score.tier_3.total_score();
-  }
+  score["tier_1"] = this->tier_1.to_yaml();
+  score["tier_2"] = this->tier_2.to_yaml();
+  score["tier_3"] = this->tier_3.to_yaml();
   return score;
 }
 
@@ -291,8 +266,6 @@ double Score::calculate_total_score() const {
 Engine::Engine(const rclcpp::NodeOptions& options)
     : node_(std::make_shared<rclcpp::Node>("aic_engine", options)),
       insert_cable_action_client_(nullptr),
-      spawn_entity_client_(nullptr),
-      is_first_trial_(true),
       model_discovered_(false) {
   RCLCPP_INFO(node_->get_logger(), "Creating AIC Engine...");
 
@@ -308,14 +281,19 @@ Engine::Engine(const rclcpp::NodeOptions& options)
   node_->declare_parameter("gripper_frame_name", std::string("gripper/tcp"));
   ground_truth_ = node_->declare_parameter("ground_truth", false);
   skip_model_ready_ = node_->declare_parameter("skip_model_ready", false);
-  skip_ready_simulator_ =
-      node_->declare_parameter("skip_ready_simulator", false);
   node_->declare_parameter("model_discovery_timeout_seconds", 30);
   node_->declare_parameter("model_configure_timeout_seconds", 60);
   node_->declare_parameter("model_activate_timeout_seconds", 60);
   node_->declare_parameter("model_deactivate_timeout_seconds", 60);
   node_->declare_parameter("model_cleanup_timeout_seconds", 60);
   node_->declare_parameter("model_shutdown_timeout_seconds", 60);
+  executive_service_address_ = node_->declare_parameter(
+      "executive_service_address", std::string("localhost:17080"));
+
+  // Create executive service stub.
+  auto channel = grpc::CreateChannel(executive_service_address_,
+                                     grpc::InsecureChannelCredentials());
+  executive_stub_ = ExecutiveService::NewStub(channel);
 
   // Set scoring output directory from AIC_RESULTS_DIR environment variable
   // If not set or empty, default to $HOME/aic_results
@@ -335,11 +313,15 @@ Engine::Engine(const rclcpp::NodeOptions& options)
   }
   RCLCPP_INFO(node_->get_logger(), "Scoring output directory set to: %s",
               scoring_output_dir_.c_str());
+
+  callback_group_ = node_->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
+
   start_engine_server_ = node_->create_service<StartEngineSrv>("/start_aic_engine",
-      std::bind(&Engine::start_engine_callback, this, std::placeholders::_1, std::placeholders::_2));
+      std::bind(&Engine::start_engine_callback, this, std::placeholders::_1, std::placeholders::_2),
+      rclcpp::ServicesQoS(), callback_group_);
 
   spin_thread_ = std::thread([node = node_]() {
-    rclcpp::executors::SingleThreadedExecutor executor;
+    rclcpp::executors::MultiThreadedExecutor executor;
     executor.add_node(node);
     executor.spin();
   });
@@ -349,6 +331,14 @@ Engine::Engine(const rclcpp::NodeOptions& options)
 void Engine::start_engine_callback(const std::shared_ptr<StartEngineSrv::Request> request,
     std::shared_ptr<StartEngineSrv::Response> response)
 {
+  if (requested_run_) {
+    const std::string error = "Failed starting engine, a run is already underway";
+    RCLCPP_ERROR(node_->get_logger(), "%s", error.c_str());
+    response->success = false;
+    response->message = error;
+    return;
+  }
+
   const auto initialization_result = this->initialize(request->config);
   if (initialization_result.has_value()) {
     RCLCPP_ERROR(node_->get_logger(), "Failed initializing engine: %s", initialization_result.value().c_str());
@@ -357,6 +347,18 @@ void Engine::start_engine_callback(const std::shared_ptr<StartEngineSrv::Request
     return;
   }
 
+  const auto err = this->run();
+  if (err.has_value()) {
+    RCLCPP_ERROR(node_->get_logger(), "Failed starting engine: %s", err.value().c_str());
+    response->success = false;
+    response->message = err.value();
+    return;
+  }
+
+  score_ = TrialScore();
+  score_->tier_1_success();
+  response->success = true;
+  requested_run_ = true;
 }
 
 //==============================================================================
@@ -379,41 +381,6 @@ std::optional<std::string> Engine::initialize(const std::string& yaml_config) {
     return error;
   }
 
-  // Parse trials from config
-  if (!config_["trials"]) {
-    const std::string error = "Config missing required key: 'trials'";
-    return error;
-  }
-
-  const auto& trials_config = config_["trials"];
-  for (auto it = trials_config.begin(); it != trials_config.end(); ++it) {
-    const std::string trial_id = it->first.as<std::string>();
-    const YAML::Node trial_config = it->second;
-
-    try {
-      Trial trial(trial_id, std::move(trial_config));
-      trials_.emplace_back(trial_id, std::move(trial));
-      RCLCPP_INFO(node_->get_logger(), "Successfully parsed trial '%s'",
-                  trial_id.c_str());
-    } catch (const std::runtime_error& e) {
-      const std::string error = "Failed to parse trial '" + trial_id + "': " + e.what();
-      return error;
-    }
-  }
-
-  if (trials_.empty()) {
-    const std::string error = "No trials found in config";
-    return error;
-  }
-
-  RCLCPP_INFO(node_->get_logger(), "Successfully parsed %zu trial(s)",
-              trials_.size());
-
-  if (!config_["scoring"]) {
-    const std::string error = "Config missing required key: 'scoring'";
-    return error;
-  }
-
   // Make sure a valid clock is received, it takes time to initialize
   // the subscriber and following timeout calls might fail otherwise
   RCLCPP_INFO(node_->get_logger(), "Waiting for clock");
@@ -426,51 +393,43 @@ std::optional<std::string> Engine::initialize(const std::string& yaml_config) {
   // Create ROS endpoints.
   const rclcpp::QoS reliable_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
 
-  // Create subscriptions that ignore local publications as aic_engine will
-  // also publish these messages to home the robot.
-  rclcpp::SubscriptionOptions sub_options_ignore_local;
-  sub_options_ignore_local.ignore_local_publications = true;
+  auto sub_options = rclcpp::SubscriptionOptions();
+  sub_options.callback_group = callback_group_;
+
   joint_motion_update_sub_ = node_->create_subscription<JointMotionUpdateMsg>(
       "/aic_controller/joint_motion_update", reliable_qos,
       [this](JointMotionUpdateMsg::ConstSharedPtr msg) {
         last_joint_motion_update_msg_ = msg;
-      },
-      sub_options_ignore_local);
+      }, sub_options);
   motion_update_sub_ = node_->create_subscription<MotionUpdateMsg>(
       "/aic_controller/motion_update", reliable_qos,
       [this](MotionUpdateMsg::ConstSharedPtr msg) {
         last_motion_update_msg_ = msg;
-      },
-      sub_options_ignore_local);
+      }, sub_options);
 
   insert_cable_action_client_ =
       rclcpp_action::create_client<InsertCableAction>(node_, "/insert_cable");
-  spawn_entity_client_ =
-      node_->create_client<SpawnEntitySrv>("/gz_server/spawn_entity");
-  delete_entity_client_ =
-      node_->create_client<DeleteEntitySrv>("/gz_server/delete_entity");
   model_get_state_client_ = node_->create_client<lifecycle_msgs::srv::GetState>(
-      model_get_state_service_name_);
+      model_get_state_service_name_, rclcpp::ServicesQoS(), callback_group_);
   model_change_state_client_ =
       node_->create_client<lifecycle_msgs::srv::ChangeState>(
-          model_change_state_service_name_);
-  switch_controller_client_ =
-      node_->create_client<controller_manager_msgs::srv::SwitchController>(
-          "/controller_manager/switch_controller");
-  reset_joints_client_ =
-      node_->create_client<ResetJointsSrv>("/scoring/reset_joints");
+          model_change_state_service_name_, rclcpp::ServicesQoS(), callback_group_);
   tare_ft_client_ = node_->create_client<TriggerSrv>(
-      "/aic_controller/tare_force_torque_sensor");
+      "/aic_controller/tare_force_torque_sensor", rclcpp::ServicesQoS(), callback_group_);
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node_->get_clock());
   tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
 
   scoring_tier2_ = std::make_unique<aic_scoring::ScoringTier2>(node_.get());
+  // TODO(luca) Change initialization to static topic names / types?
+  /*
   if (!scoring_tier2_->Initialize(config_["scoring"])) {
     const std::string error = "Failed to initialize scoring system";
     return error;
   }
+  */
   scoring_tier2_->SetGripperFrame(
       node_->get_parameter("gripper_frame_name").as_string());
+  score_ = std::nullopt;
 
   // Create output directory for bag files.
   std::error_code ec;
@@ -481,17 +440,6 @@ std::optional<std::string> Engine::initialize(const std::string& yaml_config) {
   }
   RCLCPP_INFO(node_->get_logger(), "Bag output directory: %s",
               scoring_output_dir_.c_str());
-
-  // Initialize flowstate ROS bridge clients
-  start_process_action_client_ =
-      rclcpp_action::create_client<StartProcessAction>(node_, "/start_flowstate_process");
-
-  // TODO(luca) remove since this is in check_endpoints
-  if (!start_process_action_client_->wait_for_action_server(
-          std::chrono::seconds(5))) {
-    const std::string error = "Start process action server not available after waiting";
-    return error;
-  }
 
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;32m✓ AIC Engine initialized successfully!\033[0m");
@@ -507,269 +455,122 @@ std::optional<std::string> Engine::run() {
   RCLCPP_INFO(node_->get_logger(),
               "\033[1;35m║      Starting AIC Engine Run           ║\033[0m");
   RCLCPP_INFO(node_->get_logger(),
-              "\033[1;35m║   Total Trials: %-3zu                    ║\033[0m",
-              trials_.size());
-  RCLCPP_INFO(node_->get_logger(),
               "\033[1;35m╚════════════════════════════════════════╝\033[0m");
   RCLCPP_INFO(node_->get_logger(), " ");
 
-  Score score;
-
-  size_t trial_num = 1;
-  std::optional<std::string> trial_error;
-  for (auto& trial_entry : trials_) {
-    const std::string& trial_id = trial_entry.first;
-    Trial& trial = trial_entry.second;
-    RCLCPP_INFO(node_->get_logger(), " ");
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
-    RCLCPP_INFO(node_->get_logger(), "\033[1;33m  Trial %zu/%zu: %s\033[0m",
-                trial_num++, trials_.size(), trial_id.c_str());
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;33m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m");
-    TrialResult trial_result = this->handle_trial(trial);
-    score.breakdown[trial_id] = trial_result.score;
-    if (trial_result.error.has_value()) {
-      trial_error = trial_result.error;
-      break;
-    }
-
-    if (trial.state == TrialState::AllTasksCompleted) {
-      RCLCPP_INFO(
-          node_->get_logger(),
-          "\033[1;32m✓ Trial '%s' completed successfully! Score: %f\033[0m",
-          trial_id.c_str(), trial_result.score.total_score());
-    } else {
-      RCLCPP_WARN(node_->get_logger(),
-                  "\033[1;33m⚠ Trial '%s' failed or was not completed. Score: "
-                  "%f. Continuing to next trial...\033[0m",
-                  trial_id.c_str(), trial_result.score.total_score());
-    }
-  }
-
-  // TODO(luca) refactor cleanup into single function
-  this->cleanup_model_node();
-  this->score_run(score);
-
-  // Count successful and failed trials
-  size_t successful_trials = 0;
-  size_t failed_trials = 0;
-  for (const auto& trial_entry : trials_) {
-    if (trial_entry.second.state == TrialState::AllTasksCompleted) {
-      successful_trials++;
-    } else {
-      failed_trials++;
-    }
-  }
+  TrialResult trial_result = this->handle_trial();
 
   RCLCPP_INFO(node_->get_logger(), " ");
-  if (!trial_error.has_value()) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m╔════════════════════════════════════════╗\033[0m");
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m║   ✓ All Trials Processed!              ║\033[0m");
-    RCLCPP_INFO(
-        node_->get_logger(),
-        "\033[1;32m║   Successful: %zu  Failed: %zu             ║\033[0m",
-        successful_trials, failed_trials);
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m║   Total Score: %.3f                     ║\033[0m",
-                score.calculate_total_score());
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m╚════════════════════════════════════════╝\033[0m");
-  } else {
+  if (trial_result.error.has_value()) {
     RCLCPP_ERROR(node_->get_logger(),
                  "\033[1;31m╔════════════════════════════════════════╗\033[0m");
     RCLCPP_ERROR(node_->get_logger(),
                  "\033[1;31m║   ✗ Engine Stopped with Errors         ║\033[0m");
     RCLCPP_ERROR(node_->get_logger(),
                  "\033[1;31m╚════════════════════════════════════════╝\033[0m");
+    this->score_run(trial_result.score);
+    this->reset_after_trial();
   }
-  RCLCPP_INFO(node_->get_logger(), " ");
-
-  // Print full scoring breakdown
-  YAML::Node scoring_yaml = score.serialize();
-  std::stringstream ss;
-  ss << scoring_yaml;
-  RCLCPP_INFO(node_->get_logger(),
-              "\033[1;36m╔════════════════════════════════════════╗\033[0m");
-  RCLCPP_INFO(node_->get_logger(),
-              "\033[1;36m║        Complete Scoring Results        ║\033[0m");
-  RCLCPP_INFO(node_->get_logger(),
-              "\033[1;36m╚════════════════════════════════════════╝\033[0m");
-
-  // Split the YAML output by lines and print each line
-  std::string line;
-  while (std::getline(ss, line)) {
-    RCLCPP_INFO(node_->get_logger(), "\033[1;36m%s\033[0m", line.c_str());
-  }
-  RCLCPP_INFO(node_->get_logger(), " ");
-
-  return trial_error;
+  return trial_result.error;
 }
 
 //==============================================================================
-TrialResult Engine::handle_trial(Trial& trial) {
-  RCLCPP_INFO(node_->get_logger(), "\033[1;36m→ Starting trial '%s'...\033[0m",
-              trial.id.c_str());
+void Engine::process() {
+  while (rclcpp::ok()) {
+    // Wait for an incoming request. Pretty lightweight so just normal spinlock
+    while (!this->requested_run_) {
+      if (!rclcpp::ok())
+        return;
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    RCLCPP_INFO(node_->get_logger(), "Received request for scoring, starting...");
+
+    if (this->tasks_completed_successfully()) {
+      RCLCPP_INFO(node_->get_logger(),
+                  "\033[1;32m  ✓ Tasks Completed!\033[0m");
+    } else {
+      RCLCPP_ERROR(node_->get_logger(),
+                   "\033[1;31m  ✗ Tasks were not completed successfully.\033[0m");
+    }
+    TrialScore score;
+    score.tier_1_success();
+    score_trial(score);
+    this->score_run(score);
+    reset_after_trial();
+    requested_run_ = false;
+  }
+}
+
+//==============================================================================
+TrialResult Engine::handle_trial() {
   TrialScore score;
 
   constexpr int MAX_RETRIES = 5;
 
-  if (trial.state == TrialState::Uninitialized) {
-    if (this->check_model()) {
-      trial.state = TrialState::ModelReady;
-    }
-  } else {
-    reset_after_trial(trial);
-    return {score, "Attempted to start trial while not Unitialized. Report this bug."};
-  }
-
-  if (trial.state == TrialState::ModelReady) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m  ✓ Model Ready for trial '%s'\033[0m",
-                trial.id.c_str());
-    score.tier_1_success();
-    bool success = false;
-    for (int attempt = 1; attempt <= MAX_RETRIES && !success; ++attempt) {
-      if (attempt > 1) {
-        RCLCPP_WARN(node_->get_logger(),
-                    "\033[1;33m  ⟳ Retrying check_endpoints (attempt %d/%d) "
-                    "for trial '%s'...\033[0m",
-                    attempt, MAX_RETRIES, trial.id.c_str());
-      }
-      if (this->check_endpoints()) {
-        trial.state = TrialState::EndpointsReady;
-        success = true;
-      }
-    }
-    if (!success) {
-      const std::string error =
-                   "\033[1;31m  ✗ EVALUATION ERROR: Endpoints check failed "
-                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
-                   "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m";
-      reset_after_trial(trial);
-      return {score, error};
-    }
-  } else {
-      const std::string error =
-        "\033[1;31m  ✗ Participant model is not ready for trial '" + trial.id + "'\033[0m";
-    reset_after_trial(trial);
-    return {score, error};
-  }
-
-  if (trial.state == TrialState::EndpointsReady) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m  ✓ Endpoints Ready for trial '%s'\033[0m",
-                trial.id.c_str());
-    bool success = false;
-    for (int attempt = 1; attempt <= MAX_RETRIES && !success; ++attempt) {
-      if (attempt > 1) {
-        RCLCPP_WARN(node_->get_logger(),
-                    "\033[1;33m  ⟳ Retrying ready_simulator (attempt %d/%d) "
-                    "for trial '%s'...\033[0m",
-                    attempt, MAX_RETRIES, trial.id.c_str());
-        // Reset simulator before retrying (don't home robot during retry)
-        reset_simulator(trial);
-      }
-      if (this->ready_simulator(trial)) {
-        trial.state = TrialState::SimulatorReady;
-        success = true;
-      }
-    }
-    if (!success) {
-      const std::string error =
-                   "\033[1;31m  ✗ EVALUATION ERROR: Simulator setup failed "
-                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
-                   "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m";
-      reset_after_trial(trial);
-      return {score, error};
-    }
-  } else {
+  if (!this->check_model()) {
     const std::string error =
-                 "\033[1;31m  ✗ Required endpoints are not available for trial '" +
-                 trial.id + "'\033[0m";
-    reset_after_trial(trial);
+        "\033[1;31m  ✗ Participant model is not ready.'\033[0m";
     return {score, error};
   }
 
-  if (trial.state == TrialState::SimulatorReady) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m  ✓ Simulator Ready for trial '%s'\033[0m",
-                trial.id.c_str());
-    bool success = false;
-    for (int attempt = 1; attempt <= MAX_RETRIES && !success; ++attempt) {
-      if (attempt > 1) {
-        RCLCPP_WARN(node_->get_logger(),
-                    "\033[1;33m  ⟳ Retrying ready_scoring (attempt %d/%d) for "
-                    "trial '%s'...\033[0m",
-                    attempt, MAX_RETRIES, trial.id.c_str());
-      }
-      if (this->ready_scoring(trial)) {
-        trial.state = TrialState::ScoringReady;
-        success = true;
-      }
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;32m  ✓ Model Ready\033[0m");
+  score.tier_1_success();
+
+  bool success = false;
+  for (int attempt = 1; attempt <= MAX_RETRIES && !success; ++attempt) {
+    if (attempt > 1) {
+      RCLCPP_WARN(node_->get_logger(),
+                  "\033[1;33m  ⟳ Retrying check_endpoints (attempt %d/%d)...\033[0m",
+                  attempt, MAX_RETRIES);
     }
-    if (!success) {
-      const std::string error =
-                   "\033[1;31m  ✗ EVALUATION ERROR: Scoring setup failed "
-                   "after " + std::to_string(MAX_RETRIES) + " attempts for trial '" + trial.id + "'. "
-                   "This is an infrastructure issue. Is eval environment "
-                   "started?\033[0m";
-      reset_after_trial(trial);
-      return {score, error};
+    if (this->check_endpoints()) {
+      success = true;
     }
-  } else {
+  }
+  if (!success) {
     const std::string error =
-                 "\033[1;31m  ✗ Simulator is not ready for trial '" + trial.id + "'\033[0m";
-    reset_after_trial(trial);
+                 "\033[1;31m  ✗ EVALUATION ERROR: Endpoints check failed "
+                 "after " + std::to_string(MAX_RETRIES) + " attempts. "
+                 "This is an infrastructure issue. Is eval environment "
+                 "started?\033[0m";
     return {score, error};
   }
 
-  if (trial.state == TrialState::ScoringReady) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;32m  ✓ Scoring Ready for trial '%s'\033[0m",
-                trial.id.c_str());
-    this->tasks_started(trial);
-  } else {
-    const std::string error =
-        "\033[1;31m  ✗ Scoring system is not ready for trial '" + trial.id + "'\033[0m";
-    reset_after_trial(trial);
-    return {score, error};
-  }
+  RCLCPP_INFO(node_->get_logger(), "\033[1;32m  ✓ Endpoints Ready \033[0m");
 
-  if (trial.state == TrialState::TasksExecuting) {
-    RCLCPP_INFO(node_->get_logger(),
-                "\033[1;36m  ⟳ Tasks Executing for trial '%s'...\033[0m",
-                trial.id.c_str());
-    if (this->tasks_completed_successfully(trial)) {
-      trial.state = TrialState::AllTasksCompleted;
-      RCLCPP_INFO(node_->get_logger(),
-                  "\033[1;32m  ✓ All Tasks Completed for trial '%s'!\033[0m",
-                  trial.id.c_str());
-      score_trial(score);
+  success = false;
+  for (int attempt = 1; attempt <= MAX_RETRIES && !success; ++attempt) {
+    if (attempt > 1) {
+      RCLCPP_WARN(node_->get_logger(),
+                  "\033[1;33m  ⟳ Retrying ready_scoring (attempt %d/%d)...\033[0m",
+                  attempt, MAX_RETRIES);
     }
-  } else {
+    if (this->ready_scoring()) {
+      success = true;
+    }
+  }
+  if (!success) {
     const std::string error =
-                 "\033[1;31m  ✗ Tasks cannot be started successfully for trial '" +
-                 trial.id + "'\033[0m";
-    reset_after_trial(trial);
+                 "\033[1;31m  ✗ EVALUATION ERROR: Scoring setup failed "
+                 "after " + std::to_string(MAX_RETRIES) + " attempts. "
+                 "This is an infrastructure issue. Is eval environment "
+                 "started?\033[0m";
     return {score, error};
   }
 
-  if (trial.state != TrialState::AllTasksCompleted) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "\033[1;31m  ✗ Tasks were not completed successfully for "
-                 "trial '%s'\033[0m",
-                 trial.id.c_str());
-    score_trial(score);
-    reset_after_trial(trial);
-    return {score};
+
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;32m  ✓ Scoring Ready\033[0m");
+
+  if (!this->tasks_started()) {
+    const std::string error = "\033[1;31m  ✗ Tasks not found.\033[0m";
+    return {score, error};
   }
 
-  reset_after_trial(trial);
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;36m  ⟳ Tasks Executing...\033[0m");
+  this->scoring_tier2_->SetTaskStartTime(this->node_->now());
   return {score};
 }
 
@@ -987,11 +788,11 @@ bool Engine::check_model() {
     return false;
   }
 
-  if (is_first_trial_ && !model_node_is_unconfigured()) {
+  if (!model_node_is_unconfigured()) {
     return false;
   }
 
-  if (is_first_trial_ && !configure_model_node()) {
+  if (!configure_model_node()) {
     return false;
   }
 
@@ -1054,162 +855,18 @@ bool Engine::check_endpoints() {
     return false;
   }
 
-  // Check services
-  if (!spawn_entity_client_->wait_for_service(
-          timeout.to_chrono<std::chrono::nanoseconds>())) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Spawn entity service not available after waiting");
-    return false;
-  }
-
-  if (!start_process_action_client_->wait_for_action_server(
-          std::chrono::seconds(5))) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "Start process action server not available after waiting");
-    return false;
-  }
-
   RCLCPP_INFO(node_->get_logger(), "All required endpoints are available.");
   return true;
 }
 
 //==============================================================================
-bool Engine::ready_simulator(Trial& trial) {
-  return true;
-  RCLCPP_INFO(node_->get_logger(), "Readying simulator for trial '%s'...",
-              trial.id.c_str());
-
-  if (skip_ready_simulator_) {
-    RCLCPP_WARN(node_->get_logger(),
-                "Skipping ready_simulator (skip_ready_simulator=true)");
-    return true;
-  }
-
-  // Spawn the task board.
-  RCLCPP_INFO(node_->get_logger(), "Spawning task board.");
-  const auto& task_board_config = trial.config["scene"]["task_board"];
-  if (this->spawn_entity(trial, "task_board", "/urdf/task_board.urdf.xacro",
-                         task_board_config["pose"]["x"].as<double>(),
-                         task_board_config["pose"]["y"].as<double>(),
-                         task_board_config["pose"]["z"].as<double>(),
-                         task_board_config["pose"]["roll"].as<double>(),
-                         task_board_config["pose"]["pitch"].as<double>(),
-                         task_board_config["pose"]["yaw"].as<double>())) {
-    RCLCPP_INFO(node_->get_logger(), "Task board spawned successfully.");
-  } else {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to spawn task board.");
-  }
-
-  // Tare the force-torque sensor before attaching any cables to compensate for
-  // the weight of the end-effector.
-  const auto tare_req = std::make_shared<TriggerSrv::Request>();
-  auto tare_ft_future = tare_ft_client_->async_send_request(tare_req);
-  if (!wait_for_interruptible(tare_ft_future, std::chrono::seconds(10))) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "TareFt service call timed out requesting for taring!");
-    return false;
-  }
-  auto tare_ft_response = tare_ft_future.get();
-  if (!tare_ft_response->success) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to request for taring.");
-    return false;
-  }
-
-  // Spawn the cable.
-  RCLCPP_INFO(node_->get_logger(), "Spawning cable.");
-  // Get the current gripper pose, and set the cable pose accordingly.
-  std::string warning_msg;
-  const std::string gripper_frame =
-      node_->get_parameter("gripper_frame_name").as_string();
-  if (!tf_buffer_->canTransform("world", gripper_frame, tf2::TimePointZero,
-                                tf2::durationFromSec(1.0), &warning_msg)) {
-    RCLCPP_WARN(node_->get_logger(), "TF Wait Failed: %s", warning_msg.c_str());
-    return false;
-  }
-  geometry_msgs::msg::TransformStamped t =
-      tf_buffer_->lookupTransform("world", gripper_frame, tf2::TimePointZero);
-  const auto& cables_config = trial.config["scene"]["cables"];
-  bool cable_attached = false;
-  for (const auto& cable_it : cables_config) {
-    const std::string cable_id = cable_it.first.as<std::string>();
-    const YAML::Node cable_config = cable_it.second;
-    bool attach_to_gripper = cable_config["attach_cable_to_gripper"].as<bool>();
-    if (cable_attached && attach_to_gripper) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Attempting to attach multiple cables to the gripper. "
-                   "Please check the config.");
-      return false;
-    } else if (attach_to_gripper) {
-      cable_attached = true;
-    }
-    RCLCPP_INFO(node_->get_logger(), "Spawning cable '%s'...",
-                cable_id.c_str());
-    if (this->spawn_entity(
-            trial, cable_id, "/urdf/cable.sdf.xacro",
-            t.transform.translation.x +
-                cable_config["pose"]["gripper_offset"]["x"].as<double>(),
-            t.transform.translation.y +
-                cable_config["pose"]["gripper_offset"]["y"].as<double>(),
-            t.transform.translation.z +
-                cable_config["pose"]["gripper_offset"]["z"].as<double>(),
-            cable_config["pose"]["roll"].as<double>(),
-            cable_config["pose"]["pitch"].as<double>(),
-            cable_config["pose"]["yaw"].as<double>())) {
-      RCLCPP_INFO(node_->get_logger(), "Cable %s spawned successfully.",
-                  cable_id.c_str());
-    } else {
-      RCLCPP_ERROR(node_->get_logger(), "Failed to spawn cable %s.",
-                   cable_id.c_str());
-      return false;
-    }
-  }
-
-  // Wait for cable to be spawned. Sleep in sim time to ensure sim has advanced.
-  node_->get_clock()->sleep_for(rclcpp::Duration::from_seconds(0.1));
-
-  RCLCPP_INFO(node_->get_logger(), "Waiting for robot arm to stabilize.");
-  // The end-effector dips when the cable is first attached.
-  // Wait for joints to settle by checking velocities.
-  std::condition_variable cv;
-  std::mutex mtx;
-  bool joints_settled = false;
-  const rclcpp::QoS reliable_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-  auto joint_states_sub =
-      node_->create_subscription<sensor_msgs::msg::JointState>(
-          "/joint_states", reliable_qos,
-          [this, &joints_settled, &cv,
-           &mtx](const sensor_msgs::msg::JointState::SharedPtr msg) {
-            if (msg->velocity.empty()) return;
-            for (size_t i = 0; i < msg->velocity.size(); ++i) {
-              if (std::fabs(msg->velocity[i]) > 1e-3) return;
-            }
-            {
-              std::unique_lock<std::mutex> lock(mtx);
-              joints_settled = true;
-            }
-            cv.notify_one();
-          });
-
-  std::unique_lock<std::mutex> lock(mtx);
-  const auto start = node_->now();
-  const auto timeout_duration = rclcpp::Duration::from_seconds(10);
-  while (rclcpp::ok() && !joints_settled &&
-         (node_->now() - start) < timeout_duration) {
-    cv.wait_for(lock, std::chrono::milliseconds(100),
-                [&joints_settled] { return joints_settled; });
-  }
-
-  // TODO(Yadunund): Implement other simulator readiness checks.
-
-  return true;
-}
-
-//==============================================================================
-bool Engine::ready_scoring(const Trial& trial) {
+bool Engine::ready_scoring() {
   RCLCPP_INFO(node_->get_logger(), "Checking scoring system readiness...");
   return true;
   // Register the new connections for this trial.
   std::vector<aic_scoring::Connection> connections;
+  // TODO(luca) Register the vector of connections
+  /*
   for (const auto& task : trial.tasks) {
     aic_scoring::Connection connection;
     connection.cableName = task.cable_name;
@@ -1219,6 +876,7 @@ bool Engine::ready_scoring(const Trial& trial) {
     connection.targetModuleName = task.target_module_name;
     connections.push_back(connection);
   }
+  */
 
   // Create unique bag filename with timestamp
   auto now = std::chrono::system_clock::now();
@@ -1228,17 +886,20 @@ bool Engine::ready_scoring(const Trial& trial) {
             1000;
 
   std::ostringstream oss;
-  oss << scoring_output_dir_ << "/bag_" << trial.id << "_"
+  oss << scoring_output_dir_ << "/bag_" << "_"
       << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S") << "_"
       << std::setfill('0') << std::setw(3) << ms.count();
   const std::string bag_path = oss.str();
 
   unsigned int max_task_limit = 0;
+  // TODO(luca) A const for time limit? Or just get rid of it?
+  /*
   for (const auto& task : trial.tasks) {
     if (task.time_limit > max_task_limit) {
       max_task_limit = task.time_limit;
     }
   }
+  */
   // Add a few seconds for safety since this is a limit for recorded data
   max_task_limit += 5;
   if (!scoring_tier2_->StartRecording(bag_path, connections,
@@ -1254,146 +915,62 @@ bool Engine::ready_scoring(const Trial& trial) {
 }
 
 //==============================================================================
-bool Engine::tasks_started(Trial& trial) {
-  RCLCPP_INFO(node_->get_logger(), "Starting tasks for active trial...");
-
-  if (trial.tasks.empty()) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "No task provided for this trial. Please check the config");
+bool Engine::tasks_started() {
+  // Get current operation name.
+  google::longrunning::ListOperationsRequest list_request;
+  google::longrunning::ListOperationsResponse list_response;
+  grpc::ClientContext context;
+  auto status = executive_stub_->ListOperations(&context, list_request, &list_response);
+  current_operation_name_ = "";
+  if (status.ok()) {
+    for (int i = 0; i < list_response.operations_size(); ++i) {
+      if (!list_response.operations(i).done()) {
+        current_operation_name_ = list_response.operations(i).name();
+        RCLCPP_INFO(node_->get_logger(), "Found running operation: %s",
+                    current_operation_name_.c_str());
+        break;
+      }
+    }
+  } else {
+    RCLCPP_ERROR(node_->get_logger(), "Failed to list operations: %s",
+                 status.error_message().c_str());
     return false;
   }
-  if (!trial.attempts.empty()) {
-    RCLCPP_ERROR(
-        node_->get_logger(),
-        "List of attempts non-empty before starting tasks. Report this bug.");
+  if (current_operation_name_ == "") {
+    RCLCPP_ERROR(node_->get_logger(), "No running operation found");
     return false;
   }
-
-  for (auto& task : trial.tasks) {
-    // Initialize TaskState
-    TaskAttempt task_attempt(task.id);
-    trial.attempts.emplace_back(std::move(task_attempt));
-    auto& current_attempt = trial.attempts.back();
-
-    auto insert_cable_goal = InsertCableAction::Goal();
-    insert_cable_goal.task = task;
-
-    RCLCPP_INFO(this->node_->get_logger(),
-                "Sending InsertCable goal for task [%s]", task.id.c_str());
-
-    // TODO(luca) Remove this, only for testing
-    auto start_process_goal = StartProcessAction::Goal();
-    // TODO(luca) Fix the behavior tree name depending on trial (or milestone)
-    start_process_goal.behavior_tree.name = "milestone_1";
-    // start_process_goal.behavior_tree.tree_id = "ai.intrinsic.milestone_1";
-    start_process_goal.execution_mode.mode = 1;
-    start_process_goal.simulation_mode.mode = 1;
-
-    // TODO(luca) Parameters, should be related to task?
-    // start_process_goal.parameters = "";
-    start_process_goal.scene_id = "init_world";
-    auto send_goal_future = start_process_action_client_->async_send_goal(start_process_goal);
-
-    /*
-    auto send_goal_future =
-        insert_cable_action_client_->async_send_goal(insert_cable_goal);
-    */
-    current_attempt.state = TaskState::TaskRequested;
-
-    // Handle goal response
-    auto goal_handle = send_goal_future.get();
-    if (!goal_handle) {
-      RCLCPP_ERROR(this->node_->get_logger(),
-                   "InsertCable goal for task [%s] was rejected.",
-                   task.id.c_str());
-      current_attempt.state = TaskState::TaskRejected;
-      return false;
-    }
-    // TODO(luca) It seems flowstate resets the simulation before starting the
-    // recording, so our time will always start at 0
-    current_attempt.time_started = rclcpp::Time(0, 0, RCL_ROS_TIME);
-    current_attempt.state = TaskState::TaskStarted;
-    // TODO(luca) Scoring assumes a single task per trial, revisit this
-    // when this is not the case anymore
-    this->scoring_tier2_->SetTaskStartTime(*current_attempt.time_started);
-
-    // Update trial state
-    trial.state = TrialState::TasksExecuting;
-    RCLCPP_INFO(this->node_->get_logger(), "TrialState: TasksExecuting");
-
-    // Handle goal result
-    auto result_future =
-        start_process_action_client_->async_get_result(goal_handle);
-    RCLCPP_INFO(this->node_->get_logger(), "Waiting for result...");
-
-    // Cancel goal if time limit exceeded
-    if (!wait_for_interruptible(result_future,
-                                std::chrono::seconds(task.time_limit))) {
-      RCLCPP_ERROR(this->node_->get_logger(),
-                   "Task [%s] timed out after %ld seconds. Cancelling goal.",
-                   task.id.c_str(), task.time_limit);
-      start_process_action_client_->async_cancel_goal(goal_handle);
-      current_attempt.state = TaskState::TimeLimitExceeded;
-      return false;
-    }
-
-    auto result = result_future.get();
-    if (!result.result->success) {
-      RCLCPP_INFO(this->node_->get_logger(), "Task [%s] failed: %s",
-                  task.id.c_str(), result.result->message.c_str());
-      current_attempt.state = TaskState::TaskFailed;
-      return false;
-    }
-
-    // Task succeeded, move off and send the next task goal
-    RCLCPP_INFO(this->node_->get_logger(), "Task [%s] succeeded.",
-                task.id.c_str());
-    current_attempt.time_completed = this->node_->now();
-    this->scoring_tier2_->SetTaskEndTime(*current_attempt.time_completed);
-    current_attempt.state = TaskState::TaskCompleted;
-  }
-
-  RCLCPP_INFO(node_->get_logger(), "All tasks have been processed.");
-  trial.tasks.clear();
   return true;
 }
 
 //==============================================================================
-bool Engine::tasks_completed_successfully(const Trial& trial) {
+bool Engine::tasks_completed_successfully() {
   RCLCPP_INFO(node_->get_logger(),
               "Checking if all tasks were completed successfully...");
 
-  // Check that there are no tasks left in queue
-  if (!trial.tasks.empty()) {
-    RCLCPP_ERROR(node_->get_logger(),
-                 "There are still pending tasks in the active trial.");
-    return false;
-  }
-  // Check that all tasks were completed successfully
-  for (const auto& attempt : trial.attempts) {
-    if (attempt.state != TaskState::TaskCompleted) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Task [%s] was not completed successfully. Last logged "
-                   "TaskState was [%d].",
-                   attempt.id.c_str(), static_cast<int>(attempt.state));
+  // Wait until long running operation is done here
+  if (!current_operation_name_.empty()) {
+    RCLCPP_INFO(node_->get_logger(), "Waiting for operation %s to complete...",
+                current_operation_name_.c_str());
+    google::longrunning::WaitOperationRequest wait_request;
+    wait_request.set_name(current_operation_name_);
+    google::longrunning::Operation operation;
+    grpc::ClientContext wait_context;
+    auto wait_status =
+        executive_stub_->WaitOperation(&wait_context, wait_request, &operation);
+    current_operation_name_ = "";
+    if (!wait_status.ok()) {
+      RCLCPP_ERROR(node_->get_logger(), "Error waiting for operation: %s",
+                   wait_status.error_message().c_str());
       return false;
-    }
-    if (!attempt.time_started.has_value() ||
-        !attempt.time_completed.has_value()) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Task [%s] is marked as completed but missing start or "
-                   "completion time.Report this bug.",
-                   attempt.id.c_str());
-      return false;
-    }
-    if (attempt.time_completed <= attempt.time_started) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Task [%s] has invalid completion time. Report this bug.",
-                   attempt.id.c_str());
-      return false;
+    } else {
+      RCLCPP_INFO(node_->get_logger(), "Operation %s completed.",
+                  current_operation_name_.c_str());
+      this->scoring_tier2_->SetTaskEndTime(this->node_->now());
+      return true;
     }
   }
-  return true;
+  return false;
 }
 
 //==============================================================================
@@ -1504,53 +1081,16 @@ bool Engine::cleanup_model_node() {
 }
 
 //==============================================================================
-void Engine::reset_after_trial(const Trial& trial) {
+void Engine::reset_after_trial() {
   RCLCPP_INFO(node_->get_logger(), "Resetting after trial completion...");
 
   // Deactivate the model node to transition back to configured state
   if (this->model_discovered_) {
     this->deactivate_model_node();
+    this->cleanup_model_node();
   }
-
-  is_first_trial_ = false;
-
-  reset_simulator(trial);  // Homes robot by default
 
   RCLCPP_INFO(node_->get_logger(), "Reset after trial completed.");
-}
-
-//==============================================================================
-void Engine::reset_simulator(const Trial& trial) {
-  if (skip_ready_simulator_) {
-    RCLCPP_WARN(node_->get_logger(),
-                "Skipping entity deletion (skip_ready_simulator=true)");
-    return;
-  }
-
-  // Remove spawned entities from simulator
-  for (const auto& entity_name : trial.spawned_entities) {
-    // Delete spawned entity
-    auto request = std::make_shared<DeleteEntitySrv::Request>();
-    request->entity = entity_name;
-
-    auto future = delete_entity_client_->async_send_request(request);
-    if (!wait_for_interruptible(future, std::chrono::seconds(10))) {
-      RCLCPP_ERROR(node_->get_logger(),
-                   "Delete entity service call timed out for entity '%s'",
-                   request->entity.c_str());
-    } else {
-      auto response = future.get();
-      if (response->result.result !=
-          simulation_interfaces::msg::Result::RESULT_OK) {  // RESULT_OK = 1
-        RCLCPP_ERROR(node_->get_logger(), "Failed to delete entity '%s': %s",
-                     request->entity.c_str(),
-                     response->result.error_message.c_str());
-      } else {
-        RCLCPP_INFO(node_->get_logger(), "Successfully deleted entity '%s'",
-                    request->entity.c_str());
-      }
-    }
-  }
 }
 
 //==============================================================================
@@ -1558,238 +1098,6 @@ Engine::~Engine() {
   if (spin_thread_.joinable()) {
     spin_thread_.join();
   }
-}
-
-//==============================================================================
-bool Engine::spawn_entity(Trial& trial, std::string entity_name,
-                          std::string filepath, double x, double y, double z,
-                          double roll, double pitch, double yaw) {
-  // Get the xacro file path
-  const std::string aic_description_share =
-      ament_index_cpp::get_package_share_directory("aic_description");
-  const std::string xacro_file = aic_description_share + filepath;
-
-  // Build xacro command with parameters from config
-  std::stringstream cmd;
-  cmd << "xacro " << xacro_file;
-
-  const auto& config = trial.config["scene"][entity_name];
-
-  // Append entity-specific parameters
-  if (entity_name.find("cable") != std::string::npos) {
-    const auto& config = trial.config["scene"]["cables"][entity_name];
-    // Add attach cable parameter
-    bool attach_cable_to_gripper = config["attach_cable_to_gripper"].as<bool>();
-    cmd << " attach_cable_to_gripper:="
-        << (attach_cable_to_gripper ? "true" : "false");
-
-    // Add cable type parameter
-    std::string cable_type = config["cable_type"].as<std::string>();
-    cmd << " cable_type:=" << cable_type;
-  } else if (entity_name == "task_board") {
-    const auto& config = trial.config["scene"][entity_name];
-    // Read task board limits from config
-    const auto& config_root = trial.config;
-    double nic_rail_min = -0.048;  // Default values
-    double nic_rail_max = 0.036;
-    double sc_rail_min = -0.055;
-    double sc_rail_max = 0.055;
-    double mount_rail_min = -0.09625;
-    double mount_rail_max = 0.09625;
-
-    if (config_root["task_board_limits"]) {
-      const auto& limits = config_root["task_board_limits"];
-      if (limits["nic_rail"]) {
-        nic_rail_min = limits["nic_rail"]["min_translation"].as<double>();
-        nic_rail_max = limits["nic_rail"]["max_translation"].as<double>();
-      }
-      if (limits["sc_rail"]) {
-        sc_rail_min = limits["sc_rail"]["min_translation"].as<double>();
-        sc_rail_max = limits["sc_rail"]["max_translation"].as<double>();
-      }
-      if (limits["mount_rail"]) {
-        mount_rail_min = limits["mount_rail"]["min_translation"].as<double>();
-        mount_rail_max = limits["mount_rail"]["max_translation"].as<double>();
-      }
-    }
-
-    // Add NIC rail parameters (nic_rail_0 through nic_rail_4)
-    for (int i = 0; i < 5; ++i) {
-      std::string rail_key = "nic_rail_" + std::to_string(i);
-      std::string mount_prefix = "nic_card_mount_" + std::to_string(i);
-
-      if (config[rail_key] && config[rail_key]["entity_present"] &&
-          config[rail_key]["entity_present"].as<bool>()) {
-        cmd << " " << mount_prefix << "_present:=true";
-
-        if (config[rail_key]["entity_pose"]) {
-          const auto& pose = config[rail_key]["entity_pose"];
-
-          double translation = pose["translation"].as<double>();
-          // Clamp translation to NIC rail limits
-          translation = std::clamp(translation, nic_rail_min, nic_rail_max);
-          cmd << " " << mount_prefix << "_translation:=" << translation;
-
-          // Add orientation parameters
-          double roll = pose["roll"].as<double>();
-          double pitch = pose["pitch"].as<double>();
-          double yaw = pose["yaw"].as<double>();
-          cmd << " " << mount_prefix << "_roll:=" << roll;
-          cmd << " " << mount_prefix << "_pitch:=" << pitch;
-          cmd << " " << mount_prefix << "_yaw:=" << yaw;
-        }
-      } else {
-        cmd << " " << mount_prefix << "_present:=false";
-      }
-    }
-
-    // Add SC rail parameters (sc_rail_0 and sc_rail_1)
-    for (int i = 0; i < 2; ++i) {
-      std::string rail_key = "sc_rail_" + std::to_string(i);
-      std::string port_prefix = "sc_port_" + std::to_string(i);
-
-      if (config[rail_key] && config[rail_key]["entity_present"] &&
-          config[rail_key]["entity_present"].as<bool>()) {
-        cmd << " " << port_prefix << "_present:=true";
-
-        if (config[rail_key]["entity_pose"]) {
-          const auto& pose = config[rail_key]["entity_pose"];
-
-          double translation = pose["translation"].as<double>();
-          // Clamp translation to SC rail limits
-          translation = std::clamp(translation, sc_rail_min, sc_rail_max);
-          cmd << " " << port_prefix << "_translation:=" << translation;
-
-          // Add orientation parameters
-          double roll = pose["roll"].as<double>();
-          double pitch = pose["pitch"].as<double>();
-          double yaw = pose["yaw"].as<double>();
-          cmd << " " << port_prefix << "_roll:=" << roll;
-          cmd << " " << port_prefix << "_pitch:=" << pitch;
-          cmd << " " << port_prefix << "_yaw:=" << yaw;
-        }
-      } else {
-        cmd << " " << port_prefix << "_present:=false";
-      }
-    }
-
-    // Add rail parameters (type-specific rails: lc_mount_rail_0/1,
-    // sfp_mount_rail_0/1, sc_mount_rail_0/1)
-    std::vector<std::string> rail_keys = {
-        "lc_mount_rail_0", "sfp_mount_rail_0", "sc_mount_rail_0",
-        "lc_mount_rail_1", "sfp_mount_rail_1", "sc_mount_rail_1"};
-
-    for (const auto& rail_key : rail_keys) {
-      if (config[rail_key] && config[rail_key]["entity_present"] &&
-          config[rail_key]["entity_present"].as<bool>()) {
-        cmd << " " << rail_key << "_present:=true";
-
-        if (config[rail_key]["entity_pose"]) {
-          const auto& pose = config[rail_key]["entity_pose"];
-
-          double translation = pose["translation"].as<double>();
-          // Clamp translation to mount rail limits
-          translation = std::clamp(translation, mount_rail_min, mount_rail_max);
-          cmd << " " << rail_key << "_translation:=" << translation;
-
-          // Add orientation parameters
-          double roll = pose["roll"].as<double>();
-          double pitch = pose["pitch"].as<double>();
-          double yaw = pose["yaw"].as<double>();
-          cmd << " " << rail_key << "_roll:=" << roll;
-          cmd << " " << rail_key << "_pitch:=" << pitch;
-          cmd << " " << rail_key << "_yaw:=" << yaw;
-        }
-      } else {
-        cmd << " " << rail_key << "_present:=false";
-      }
-    }
-
-    // Add ground_truth parameter
-    cmd << " ground_truth:=" << (ground_truth_ ? "true" : "false");
-  } else {
-    RCLCPP_ERROR(node_->get_logger(), "Unknown entity name: %s",
-                 entity_name.c_str());
-    return false;
-  }
-
-  FILE* pipe = popen(cmd.str().c_str(), "r");
-  if (!pipe) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to execute xacro command");
-    return false;
-  }
-
-  std::stringstream urdf_stream;
-  char buffer[128];
-  while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
-    urdf_stream << buffer;
-  }
-  int result = pclose(pipe);
-  if (result != 0) {
-    RCLCPP_ERROR(node_->get_logger(), "xacro command failed with code %d",
-                 result);
-    return false;
-  }
-
-  std::string urdf_string = urdf_stream.str();
-  if (urdf_string.empty()) {
-    RCLCPP_ERROR(node_->get_logger(), "Generated URDF is empty");
-    return false;
-  }
-
-  // Convert roll, pitch, yaw to quaternion
-  double cy = cos(yaw * 0.5);
-  double sy = sin(yaw * 0.5);
-  double cp = cos(pitch * 0.5);
-  double sp = sin(pitch * 0.5);
-  double cr = cos(roll * 0.5);
-  double sr = sin(roll * 0.5);
-
-  double qw = cr * cp * cy + sr * sp * sy;
-  double qx = sr * cp * cy - cr * sp * sy;
-  double qy = cr * sp * cy + sr * cp * sy;
-  double qz = cr * cp * sy - sr * sp * cy;
-
-  // Create spawn request
-  auto request = std::make_shared<SpawnEntitySrv::Request>();
-  request->name = entity_name;
-  request->allow_renaming = true;
-  request->uri = "";
-  request->resource_string = urdf_string;
-  request->entity_namespace = "";
-  request->initial_pose.header.frame_id = "world";
-  request->initial_pose.pose.position.x = x;
-  request->initial_pose.pose.position.y = y;
-  request->initial_pose.pose.position.z = z;
-  request->initial_pose.pose.orientation.x = qx;
-  request->initial_pose.pose.orientation.y = qy;
-  request->initial_pose.pose.orientation.z = qz;
-  request->initial_pose.pose.orientation.w = qw;
-
-  // Add entity to spawned_entities list before making the service call
-  // This ensures cleanup will attempt to delete it even if the service
-  // reports failure but entity actually spawns in the background
-  trial.spawned_entities.emplace_back(entity_name);
-
-  // Call service synchronously with timeout
-  auto future = spawn_entity_client_->async_send_request(request);
-  if (!wait_for_interruptible(future, std::chrono::seconds(10))) {
-    RCLCPP_ERROR(node_->get_logger(), "Spawn entity service call timed out");
-    return false;
-  }
-
-  auto response = future.get();
-
-  if (response->result.result !=
-      simulation_interfaces::msg::Result::RESULT_OK) {
-    RCLCPP_ERROR(node_->get_logger(), "Failed to spawn cable: %s",
-                 response->result.error_message.c_str());
-    return false;
-  }
-
-  RCLCPP_INFO(node_->get_logger(), "Successfully spawned %s as '%s'",
-              entity_name.c_str(), response->entity_name.c_str());
-  return true;
 }
 
 //==============================================================================
@@ -1807,12 +1115,28 @@ void Engine::score_trial(TrialScore& score) {
 }
 
 //==============================================================================
-void Engine::score_run(const Score& score) {
+void Engine::score_run(const TrialScore& score) {
   YAML::Node node = score.serialize();
 
   const std::string yaml_output_file = scoring_output_dir_ + "/scoring.yaml";
   std::ofstream fout(yaml_output_file);
   fout << node;
+
+  std::stringstream ss;
+  ss << node;
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;36m╔════════════════════════════════════════╗\033[0m");
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;36m║        Complete Scoring Results        ║\033[0m");
+  RCLCPP_INFO(node_->get_logger(),
+              "\033[1;36m╚════════════════════════════════════════╝\033[0m");
+
+  // Split the YAML output by lines and print each line
+  std::string line;
+  while (std::getline(ss, line)) {
+    RCLCPP_INFO(node_->get_logger(), "\033[1;36m%s\033[0m", line.c_str());
+  }
+  RCLCPP_INFO(node_->get_logger(), " ");
 }
 
 }  // namespace aic

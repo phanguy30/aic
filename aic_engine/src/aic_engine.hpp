@@ -34,7 +34,6 @@
 #include "aic_scoring/TierScore.hh"
 #include "aic_task_interfaces/action/insert_cable.hpp"
 #include "controller_manager_msgs/srv/switch_controller.hpp"
-#include "flowstate_interfaces/action/start_process.hpp"
 #include "geometry_msgs/msg/wrench_stamped.hpp"
 #include "lifecycle_msgs/msg/state.hpp"
 #include "lifecycle_msgs/srv/change_state.hpp"
@@ -50,82 +49,21 @@
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
 #include "yaml-cpp/yaml.h"
 
+#include <grpcpp/grpcpp.h>
+#include "google/longrunning/operations.pb.h"
+#include "intrinsic/executive/proto/executive_service.grpc.pb.h"
+
 //==============================================================================
 namespace aic {
 
-using DeleteEntitySrv = simulation_interfaces::srv::DeleteEntity;
+using ExecutiveService = intrinsic_proto::executive::ExecutiveService;
 using InsertCableAction = aic_task_interfaces::action::InsertCable;
-using InsertCableGoalHandle =
-    rclcpp_action::ServerGoalHandle<InsertCableAction>;
 using JointMotionUpdateMsg = aic_control_interfaces::msg::JointMotionUpdate;
-using JointTrajectoryPoint = trajectory_msgs::msg::JointTrajectoryPoint;
 using MotionUpdateMsg = aic_control_interfaces::msg::MotionUpdate;
-using ResetJointsSrv = aic_engine_interfaces::srv::ResetJoints;
-using SpawnEntitySrv = simulation_interfaces::srv::SpawnEntity;
 using StartEngineSrv = aic_engine_interfaces::srv::StartEngine;
-using StartProcessAction = flowstate_interfaces::action::StartProcess;
-using SwitchControllerSrv = controller_manager_msgs::srv::SwitchController;
 using Task = aic_task_interfaces::msg::Task;
-using TrajectoryGenerationMode =
-    aic_control_interfaces::msg::TrajectoryGenerationMode;
 using TriggerSrv = std_srvs::srv::Trigger;
 using WrenchStampedMsg = geometry_msgs::msg::WrenchStamped;
-
-//==============================================================================
-// For each trial, track its state.
-// States progress from Uninitialized -> EndpointsReady -> SimulatorReady
-// -> ScoringReady -> TasksExecuting -> AllTasksCompleted
-// Uninitialized: Trial has not started.
-// ModelReady: Participant model node is available and conforms to challenge
-// requirements.
-// EndpointsReady: Required nodes are up and running.
-// SimulatorReady: Simulator is ready with the task board and cables spawned.
-// ScoringReady: Scoring system is ready to track performance.
-// TasksExecuting: Tasks are being executed.
-// AllTasksCompleted: All tasks has been completed successfully or time limit
-// reached.
-enum class TrialState : uint8_t {
-  Uninitialized = 0,
-  ModelReady,
-  EndpointsReady,
-  SimulatorReady,
-  ScoringReady,
-  TasksExecuting,
-  AllTasksCompleted
-};
-
-//==============================================================================
-// For each task, track its state.
-// States progress from Uninitialized -> TaskRequested -> TaskStarted ->
-// TaskCompleted for successful runs.
-// Uninitialized: Task has not started.
-// TaskRequest: Task goal has been sent.
-// TaskStarted: Task has been started executing.
-// TaskCompleted: Task has been completed successfully.
-// TaskRejected: Task was rejected.
-// TaskFailed: Task has failed.
-// TimeLimitExceeded: Task's configured time limit was exceeded.
-enum class TaskState : uint8_t {
-  Uninitialized = 0,
-  TaskRequested,
-  TaskStarted,
-  TaskCompleted,
-  TaskRejected,
-  TaskFailed,
-  TimeLimitExceeded,
-};
-
-//==============================================================================
-struct TaskAttempt {
-  // Constructors.
-  TaskAttempt(const std::string& id);
-
-  std::string id;
-  std::optional<rclcpp::Time> time_started;
-  std::optional<rclcpp::Time> time_completed;
-  bool success;
-  TaskState state;
-};
 
 //==============================================================================
 struct Trial {
@@ -137,8 +75,6 @@ struct Trial {
   std::vector<std::string> spawned_entities;
   YAML::Node config;
   std::vector<Task> tasks;
-  std::vector<TaskAttempt> attempts;
-  TrialState state;
 };
 
 //==============================================================================
@@ -157,18 +93,10 @@ struct TrialScore {
   double total_score() const {
     return tier_1.total_score() + tier_2.total_score() + tier_3.total_score();
   }
-};
-
-struct Score {
-  // Intentionally alphabetically sorted, trial_id -> trial_score
-  std::map<std::string, TrialScore> breakdown;
 
   /// \brief Serializes the score into a YAML node for logging.
   /// \return The resulting YAML node with serialized data.
   YAML::Node serialize() const;
-
-  /// \brief Computes the total score from the score breakdown.
-  double calculate_total_score() const;
 };
 
 struct TrialResult {
@@ -188,6 +116,10 @@ class Engine {
   /// \brief Constructor.
   Engine(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
+  /// \brief Processes incoming requests. Blocking call will only exit when
+  /// rclcpp::ok() returns false;
+  void process();
+
   /// \brief Destructor.
   ~Engine();
 
@@ -204,15 +136,11 @@ class Engine {
   /// \brief Handle the logic for a given trial.
   /// \param[in] trial The trial to handle.
   /// \return The result of the trial after handling.
-  TrialResult handle_trial(Trial& trial);
+  TrialResult handle_trial();
 
   /// \brief Reset internal and simulator states after a trial is completed.
   /// \param[in] trial The trial currently being ran
-  void reset_after_trial(const Trial& trial);
-
-  /// \brief Reset simulator by deleting spawned entities for a trial.
-  /// \param[in] trial The trial whose entities should be deleted
-  void reset_simulator(const Trial& trial);
+  void reset_after_trial();
 
   /// \brief Check if the participant model is ready. As per challenge
   /// requirements. See challenge_rules.md for details. \return True if the
@@ -223,40 +151,17 @@ class Engine {
   /// \return True if all required endpoints are available, false otherwise.
   bool check_endpoints();
 
-  /// \brief Check if the simulator is ready.
-  /// \param[in] trial The trial currently being ran
-  /// \return True if the simulator is ready, false otherwise.
-  bool ready_simulator(Trial& trial);
-
   /// \brief Check if the scoring system is ready.
-  /// \param[in] trial The trial currently being ran
   /// \return True if the scoring system is ready, false otherwise.
-  bool ready_scoring(const Trial& trial);
+  bool ready_scoring();
 
   /// \brief Check if tasks were started successfully.
-  /// \param[in] trial The trial currently being ran
   /// \return True if tasks were started successfully, false otherwise.
-  bool tasks_started(Trial& trial);
+  bool tasks_started();
 
   /// \brief Check if all tasks have been completed successfully.
-  /// \param[in] trial The trial currently being ran
   /// \return True if tasks were completed successfully, false otherwise.
-  bool tasks_completed_successfully(const Trial& trial);
-
-  /// \brief Spawn an entity in Gazebo.
-  /// \param[in] trial The trial currently being ran
-  /// \param[in] entity_name Name of the entity to spawn
-  /// \param[in] filepath Path to the xacro file of the entity
-  /// \param[in] x X position
-  /// \param[in] y Y position
-  /// \param[in] z Z position
-  /// \param[in] roll Roll orientation (radians)
-  /// \param[in] pitch Pitch orientation (radians)
-  /// \param[in] yaw Yaw orientation (radians)
-  /// \return True if spawning succeeded, false otherwise
-  bool spawn_entity(Trial& trial, std::string entity_name, std::string filepath,
-                    double x, double y, double z, double roll, double pitch,
-                    double yaw);
+  bool tasks_completed_successfully();
 
   /// @brief Check if the robot was commanded to move by the model node.
   /// @return True if the robot was commanded to move, false otherwise.
@@ -299,7 +204,7 @@ class Engine {
 
   /// @brief Scores the current run, writing its result to a YAML file.
   /// \param[in] The score to serialize and write.
-  void score_run(const Score& score);
+  void score_run(const TrialScore& score);
 
   /// @brief Wait for a future, interrupt if rclcpp Context is shut down.
   /// \param[in] The future to wait for.
@@ -334,6 +239,13 @@ class Engine {
   // Name of the service to change the lifecycle state of the model node.
   std::string model_change_state_service_name_;
 
+  // Executive service address.
+  std::string executive_service_address_;
+  // Executive service stub.
+  std::unique_ptr<ExecutiveService::Stub> executive_stub_;
+  // Current long running operation name.
+  std::string current_operation_name_;
+
   // Internal ROS 2 node.
   rclcpp::Node::SharedPtr node_;
   // Subscriptions.
@@ -348,40 +260,37 @@ class Engine {
   // Action clients.
   rclcpp_action::Client<InsertCableAction>::SharedPtr
       insert_cable_action_client_;
-  rclcpp_action::Client<StartProcessAction>::SharedPtr
-      start_process_action_client_;
 
   // Service clients.
-  rclcpp::Client<SpawnEntitySrv>::SharedPtr spawn_entity_client_;
-  rclcpp::Client<DeleteEntitySrv>::SharedPtr delete_entity_client_;
   rclcpp::Client<lifecycle_msgs::srv::GetState>::SharedPtr
       model_get_state_client_;
   rclcpp::Client<lifecycle_msgs::srv::ChangeState>::SharedPtr
       model_change_state_client_;
-  rclcpp::Client<controller_manager_msgs::srv::SwitchController>::SharedPtr
-      switch_controller_client_;
-  rclcpp::Client<ResetJointsSrv>::SharedPtr reset_joints_client_;
   rclcpp::Client<TriggerSrv>::SharedPtr tare_ft_client_;
 
 
   // Service servers.
   rclcpp::Service<StartEngineSrv>::SharedPtr start_engine_server_;
 
+  // Callback group for concurrent execution.
+  rclcpp::CallbackGroup::SharedPtr callback_group_;
+
   // TF
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 
+  // Set to true when a run is requested, will be processed by main thread.
+  // Set to false when a run is finished and the engine is idle.
+  std::atomic<bool> requested_run_ = false;
+
   // Task config.
   YAML::Node config_;
 
-  // All trials parsed from config.
-  std::vector<std::pair<std::string, Trial>> trials_;
-
-  // Variable to track first trial as want to configure model only once.
-  bool is_first_trial_;
-
   // Thread to spin ROS 2 node.
   std::thread spin_thread_;
+
+  // Score for the current run
+  std::optional<TrialScore> score_;
 
   // Whether to publish ground truth data for scoring.
   bool ground_truth_;
@@ -392,10 +301,6 @@ class Engine {
 
   // Whether the participant model has been discovered and readied.
   bool model_discovered_;
-
-  // Pre-built messages for homing robot (built once in initialize())
-  JointMotionUpdateMsg home_joint_msg_;
-  std::shared_ptr<ResetJointsSrv::Request> home_reset_joints_request_;
 
   // Scoring tier 2 instance.
   std::unique_ptr<aic_scoring::ScoringTier2> scoring_tier2_;

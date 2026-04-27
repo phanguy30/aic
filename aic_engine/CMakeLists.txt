@@ -5,6 +5,12 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Default to C++20
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 20)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 
@@ -16,6 +22,8 @@ find_package(ament_index_cpp REQUIRED)
 find_package(controller_manager_msgs REQUIRED)
 find_package(flowstate_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(grpc_vendor REQUIRED)
+find_package(intrinsic_sdk_cmake REQUIRED)
 find_package(lifecycle_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
@@ -33,6 +41,7 @@ add_executable(aic_engine
 target_link_libraries(aic_engine
   aic_scoring::aic_scoring
   ament_index_cpp::ament_index_cpp
+  intrinsic_sdk_cmake::intrinsic_sdk_cmake
   rclcpp::rclcpp
   rclcpp_action::rclcpp_action
   tf2::tf2

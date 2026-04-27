@@ -17,6 +17,8 @@
   <depend>controller_manager_msgs</depend>
   <depend>flowstate_interfaces</depend>
   <depend>geometry_msgs</depend>
+  <depend>grpc_vendor</depend>
+  <depend>intrinsic_sdk_cmake</depend>
   <depend>lifecycle_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>
