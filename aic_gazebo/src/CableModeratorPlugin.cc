@@ -243,22 +243,24 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& _info,
                                      gz::sim::EntityComponentManager& _ecm) {
   if (this->cableState == CableState::COMPLETED) return;
 
-  bool allFound = this->FindCableModels(_info, _ecm);
+  if (!this->foundAllCables) {
+    this->foundAllCables = this->FindCableModels(_info, _ecm);
 
-  for (size_t i = 1; i < this->cableTrackers.size(); ++i) {
-    auto& tracker = this->cableTrackers[i];
-    if (tracker.found && !tracker.frozen) {
-      auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
-          _info.simTime - tracker.foundTime);
-      if (timeSinceFound.count() >= 1) {
-        this->MakeCableStatic(i, _ecm);
-        tracker.frozen = true;
-        gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
+    for (size_t i = 1; i < this->cableTrackers.size(); ++i) {
+      auto& tracker = this->cableTrackers[i];
+      if (tracker.found && !tracker.frozen) {
+        auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
+            _info.simTime - tracker.foundTime);
+        if (timeSinceFound.count() >= 1) {
+          this->MakeCableStatic(i, _ecm);
+          tracker.frozen = true;
+          gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
+        }
       }
     }
   }
 
-  if (!allFound) return;
+  if (!this->foundAllCables) return;
 
   if (this->endEffectorLinkEntity == kNullEntity) {
     this->endEffectorLinkEntity =
