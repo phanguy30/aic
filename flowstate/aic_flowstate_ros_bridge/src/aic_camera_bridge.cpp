@@ -56,10 +56,13 @@ void AicCameraBridge::declare_ros_parameters(
 bool AicCameraBridge::initialize(
     ROSNodeInterfaces ros_node_interfaces,
     std::shared_ptr<Executive> /*executive_client*/,
-    std::shared_ptr<World> /*world_client*/) {
+    std::shared_ptr<World> world_client) {
   data_ = std::make_shared<Data>();
+  data_->world_client_ = world_client;
 
   data_->node_interfaces_ = std::move(ros_node_interfaces);
+
+  FindFocalLength();
 
   const auto& param_interface =
       data_->node_interfaces_
@@ -90,6 +93,13 @@ bool AicCameraBridge::initialize(
   data_->right_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
       topics_interface, "/right_camera/image", image_pub_qos);
 
+  data_->left_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+      topics_interface, "/left_camera/camera_info", image_pub_qos);
+  data_->center_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+      topics_interface, "/center_camera/camera_info", image_pub_qos);
+  data_->right_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+      topics_interface, "/right_camera/camera_info", image_pub_qos);
+
   // Create a Zenoh subscriber on the robot_state pubsub topic
   auto image_sub =
       data_->pubsub_->CreateSubscription<sensor_msgs::msg::pb::jazzy::Image>(
@@ -114,14 +124,13 @@ bool AicCameraBridge::initialize(
 ///=============================================================================
 void AicCameraBridge::ImageCallback(
     const sensor_msgs::msg::pb::jazzy::Image& image) {
-
   const absl::Time start_time = absl::Now();
   sensor_msgs::msg::Image ros_image;
 
   // Populate header
   ros_image.header.stamp.sec = image.header().stamp().sec();
   ros_image.header.stamp.nanosec = image.header().stamp().nanosec();
-  ros_image.header.frame_id = image.header().frame_id();
+  // frame_id will be populated later, without the incoming numeric ID prefix
 
   // Populate image metadata
   ros_image.height = image.height();
@@ -130,26 +139,71 @@ void AicCameraBridge::ImageCallback(
   ros_image.is_bigendian = image.is_bigendian();
   ros_image.step = image.step();
 
-  // Populate image data
+  // Populate image pixel-block data
   ros_image.data.assign(image.data().begin(), image.data().end());
 
-  const absl::Duration duration = absl::Now() - start_time;
+  const absl::Duration ros_image_creation_duration = absl::Now() - start_time;
 
-  // Route based on frame_id
+  static int callback_count = 0;
+  callback_count++;
+  if (callback_count % 300 == 0) {
+    if (data_->focal_length_x_ == 0.0) {
+      LOG(INFO) << "Focal length still zero. Retrying search.";
+      FindFocalLength();
+    }
+    LOG(INFO) << absl::StrFormat(
+        "camera image translation took %.6f seconds",
+        absl::ToDoubleSeconds(ros_image_creation_duration));
+    if (data_->focal_length_x_ == 0) {
+    }
+  }
+
+  sensor_msgs::msg::CameraInfo camera_info;
+  camera_info.header = ros_image.header;
+  camera_info.height = ros_image.height;
+  camera_info.width = ros_image.width;
+
+  // Images from the simulation are undistorted, so the distortion
+  // parameter vector 'd' will be left as zeros.
+  camera_info.distortion_model = "plumb_bob";
+  camera_info.d.assign(5, 0.0);
+
+  // Populate the intrinsic camera matrix
+  camera_info.k[0] = data_->focal_length_x_;
+  camera_info.k[2] = ros_image.width / 2.0;
+  camera_info.k[4] = data_->focal_length_y_;
+  camera_info.k[5] = ros_image.height / 2.0;
+  camera_info.k[8] = 1.0;
+
+  // Identity rotation matrix, the convention for monocular cameras.
+  camera_info.r[0] = 1.0;
+  camera_info.r[4] = 1.0;
+  camera_info.r[8] = 1.0;
+
+  // Populate the projection matrix following monocular conventions.
+  camera_info.p[0] = data_->focal_length_x_;
+  camera_info.p[2] = ros_image.width / 2.0;
+  camera_info.p[5] = data_->focal_length_y_;
+  camera_info.p[6] = ros_image.height / 2.0;
+  camera_info.p[10] = 1.0;
+
+  // Route based on frame_id substring
   const std::string& frame_id = ros_image.header.frame_id;
   if (frame_id.find("left_camera") != std::string::npos) {
+    ros_image.header.frame_id = "left_camera/optical";
+    camera_info.header.frame_id = ros_image.header.frame_id;
     data_->left_image_pub_->publish(ros_image);
+    data_->left_camera_info_pub_->publish(camera_info);
   } else if (frame_id.find("center_camera") != std::string::npos) {
-    static int center_callback_count = 0;
-    center_callback_count++;
-    if (center_callback_count % 100 == 0) {
-      LOG(INFO) << absl::StrFormat(
-          "center camera translation duration: %.6f seconds",
-          absl::ToDoubleSeconds(duration));
-    }
+    ros_image.header.frame_id = "center_camera/optical";
+    camera_info.header.frame_id = ros_image.header.frame_id;
     data_->center_image_pub_->publish(ros_image);
+    data_->center_camera_info_pub_->publish(camera_info);
   } else if (frame_id.find("right_camera") != std::string::npos) {
+    ros_image.header.frame_id = "right_camera/optical";
+    camera_info.header.frame_id = ros_image.header.frame_id;
     data_->right_image_pub_->publish(ros_image);
+    data_->right_camera_info_pub_->publish(camera_info);
   } else {
     LOG(WARNING) << "Unknown camera frame_id: " << frame_id;
   }
@@ -165,6 +219,31 @@ AicCameraBridge::Data::~Data() {
   left_image_pub_.reset();
   center_image_pub_.reset();
   right_image_pub_.reset();
+}
+
+void AicCameraBridge::FindFocalLength() {
+  if (!data_->world_client_) return;
+  auto objects_or = data_->world_client_->GetObjects();
+  if (objects_or.ok()) {
+    for (const auto& object : *objects_or) {
+      const auto& proto = object.Proto();
+      for (const auto& [name, entity] : proto.entities()) {
+        if (entity.has_sensor_component() &&
+            entity.sensor_component().has_camera()) {
+          const auto& camera = entity.sensor_component().camera();
+          if (camera.has_properties() &&
+              camera.properties().has_intrinsics()) {
+            data_->focal_length_x_ = camera.properties().intrinsics().fx();
+            data_->focal_length_y_ = camera.properties().intrinsics().fy();
+            LOG(INFO) << "Found focal length: " << data_->focal_length_x_
+                      << ", " << data_->focal_length_y_;
+            break;
+          }
+        }
+      }
+      if (data_->focal_length_x_ != 0.0) break;
+    }
+  }
 }
 
 }  // namespace flowstate_ros_bridge
