@@ -24,8 +24,8 @@
 #include "flowstate_ros_bridge/bridge_interface.hpp"
 #include "intrinsic/platform/pubsub/pubsub.h"
 #include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
+#include "sensor_msgs/msg/image.hpp"
 #include "third_party/ros2/ros_interfaces/jazzy/sensor_msgs/msg/image.pb.h"
 
 namespace flowstate_ros_bridge {
@@ -57,9 +57,12 @@ class AicCameraBridge : public BridgeInterface {
         center_image_pub_;
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::Image>>
         right_image_pub_;
-    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>> left_camera_info_pub_;
-    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>> center_camera_info_pub_;
-    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>> right_camera_info_pub_;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>>
+        left_camera_info_pub_;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>>
+        center_camera_info_pub_;
+    std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>>
+        right_camera_info_pub_;
 
     Data();
     ~Data();

@@ -93,12 +93,15 @@ bool AicCameraBridge::initialize(
   data_->right_image_pub_ = rclcpp::create_publisher<sensor_msgs::msg::Image>(
       topics_interface, "/right_camera/image", image_pub_qos);
 
-  data_->left_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
-      topics_interface, "/left_camera/camera_info", image_pub_qos);
-  data_->center_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
-      topics_interface, "/center_camera/camera_info", image_pub_qos);
-  data_->right_camera_info_pub_ = rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
-      topics_interface, "/right_camera/camera_info", image_pub_qos);
+  data_->left_camera_info_pub_ =
+      rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+          topics_interface, "/left_camera/camera_info", image_pub_qos);
+  data_->center_camera_info_pub_ =
+      rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+          topics_interface, "/center_camera/camera_info", image_pub_qos);
+  data_->right_camera_info_pub_ =
+      rclcpp::create_publisher<sensor_msgs::msg::CameraInfo>(
+          topics_interface, "/right_camera/camera_info", image_pub_qos);
 
   // Create a Zenoh subscriber on the robot_state pubsub topic
   auto image_sub =
@@ -231,8 +234,7 @@ void AicCameraBridge::FindFocalLength() {
         if (entity.has_sensor_component() &&
             entity.sensor_component().has_camera()) {
           const auto& camera = entity.sensor_component().camera();
-          if (camera.has_properties() &&
-              camera.properties().has_intrinsics()) {
+          if (camera.has_properties() && camera.properties().has_intrinsics()) {
             data_->focal_length_x_ = camera.properties().intrinsics().fx();
             data_->focal_length_y_ = camera.properties().intrinsics().fy();
             LOG(INFO) << "Found focal length: " << data_->focal_length_x_
