@@ -39,17 +39,11 @@
 using namespace std::chrono_literals;
 
 namespace flowstate_ros_bridge {
-constexpr const char* kDecimationParamName = "decimation";
 
 ///=============================================================================
 void AicCameraBridge::declare_ros_parameters(
-    ROSNodeInterfaces ros_node_interfaces) {
-  const auto& param_interface =
-      ros_node_interfaces
-          .get<rclcpp::node_interfaces::NodeParametersInterface>();
-
-  param_interface->declare_parameter(kDecimationParamName,
-                                     rclcpp::ParameterValue{1});
+    ROSNodeInterfaces /*ros_node_interfaces*/) {
+  // No parameters currently
 }
 
 ///=============================================================================
@@ -63,16 +57,6 @@ bool AicCameraBridge::initialize(
   data_->node_interfaces_ = std::move(ros_node_interfaces);
 
   FindFocalLength();
-
-  const auto& param_interface =
-      data_->node_interfaces_
-          .get<rclcpp::node_interfaces::NodeParametersInterface>();
-
-#if 0
-  data_->server_address_ =
-      param_interface->get_parameter(kServerAddressParamName)
-          .get_value<std::string>();
-#endif
 
   data_->pubsub_ = std::make_shared<intrinsic::PubSub>(
       data_->node_interfaces_.get<rclcpp::node_interfaces::NodeBaseInterface>()
@@ -215,7 +199,6 @@ void AicCameraBridge::ImageCallback(
 ///=============================================================================
 AicCameraBridge::Data::Data() {}
 
-///=============================================================================
 AicCameraBridge::Data::~Data() {
   pubsub_.reset();
   image_sub_.reset();

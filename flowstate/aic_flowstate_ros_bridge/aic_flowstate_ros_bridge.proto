@@ -2,11 +2,6 @@ syntax = "proto3";
 
 package intrinsic;
 
-// Configuration for Flowstate -> ROS camera bridge(s)
-message FlowstateRosCameraBridgeConfig {
-  double focal_length = 1;
-}
-
 // Configuration for robot control bridge
 message RobotControlBridgeConfig {
   string server_address = 1;
@@ -44,5 +39,4 @@ message FlowstateRosBridgeConfig {
   int64 executive_update_rate_millis = 11;
   SensorPublisherConfig sensors = 12;
   RobotControlBridgeConfig robot_control_bridge_config = 13;
-  FlowstateRosCameraBridgeConfig flowstate_ros_camera_bridge_config = 14;
 }
