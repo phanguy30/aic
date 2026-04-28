@@ -22,6 +22,17 @@
             <radius>0.002</radius>
           </sphere>
         </geometry>
+        <surface>
+          <friction>
+            <torsional>
+              <coefficient>0.05</coefficient>
+            </torsional>
+            <bullet>
+              <friction>0.05</friction>
+              <friction2>0.05</friction2>
+            </bullet>
+          </friction>
+        </surface>
       </collision>
       <visual name='base_vis'>
         <pose>0 0 0 0 0 0</pose>
@@ -547,6 +558,17 @@
             <radius>0.002</radius>
           </cylinder>
         </geometry>
+        <surface>
+          <friction>
+            <torsional>
+              <coefficient>0.05</coefficient>
+            </torsional>
+            <bullet>
+              <friction>0.05</friction>
+              <friction2>0.05</friction2>
+            </bullet>
+          </friction>
+        </surface>
       </collision>
       <visual name='link_6_vis'>
         <pose>0 0 0 0 0 0</pose>
@@ -2317,12 +2339,12 @@
         <pose>0 0 0 0 0 0</pose>
         <mass>0.01</mass>
         <inertia>
-          <ixx>0.01</ixx>
+          <ixx>1e-03</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.01</iyy>
+          <iyy>1e-03</iyy>
           <iyz>0</iyz>
-          <izz>0.01</izz>
+          <izz>1e-03</izz>
         </inertia>
       </inertial>
       <pose>1.7161193510695227e-07 -2.0317050514195856e-08 -2.0573089890008056e-07 -0.21237071140616082 -0.63195479276709987 0.038809485418558186</pose>
@@ -2334,6 +2356,17 @@
             <length>0.0036055512754639895</length>
           </cylinder>
         </geometry>
+        <surface>
+          <friction>
+            <torsional>
+              <coefficient>0.05</coefficient>
+            </torsional>
+            <bullet>
+              <friction>0.05</friction>
+              <friction2>0.05</friction2>
+            </bullet>
+          </friction>
+        </surface>
       </collision>
       <visual name='visual_0'>
         <pose>-0.0018027756377319948 0.002 0 0.58800260356095158 1.5707900000278763 1.7547982117249351e-11</pose>
@@ -2362,6 +2395,17 @@
             <length>0.0036055512754639895</length>
           </cylinder>
         </geometry>
+        <surface>
+          <friction>
+            <torsional>
+              <coefficient>0.05</coefficient>
+            </torsional>
+            <bullet>
+              <friction>0.05</friction>
+              <friction2>0.05</friction2>
+            </bullet>
+          </friction>
+        </surface>
       </collision>
       <visual name='visual_1'>
         <pose>-0.0018027756377319948 -0.002 0 -0.58800260356095158 1.5707900000278763 -1.7547982117249351e-11</pose>
@@ -2389,12 +2433,12 @@
         <pose>0 0 0 0 0 0</pose>
         <mass>0.01</mass>
         <inertia>
-          <ixx>0.01</ixx>
+          <ixx>1e-03</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>0.01</iyy>
+          <iyy>1e-03</iyy>
           <iyz>0</iyz>
-          <izz>0.01</izz>
+          <izz>1e-03</izz>
         </inertia>
       </inertial>
       <pose>-0.01816015053220843 0.0058330576729706263 0.023660684305841895 -1.3618622312557218 0.60947104933035079 -3.1086968029674726</pose>
