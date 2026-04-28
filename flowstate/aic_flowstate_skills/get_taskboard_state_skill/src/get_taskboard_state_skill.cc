@@ -104,7 +104,6 @@ GetTaskboardStateSkill::Execute(
   // Helper lambda to copy component state
   auto copy_comp = [&](const auto& ros_comp, auto* proto_comp) {
     proto_comp->set_entity_present(ros_comp.entity_present);
-    proto_comp->set_entity_name(ros_comp.entity_name);
     proto_comp->set_translation(ros_comp.translation);
     proto_comp->set_roll(ros_comp.roll);
     proto_comp->set_pitch(ros_comp.pitch);

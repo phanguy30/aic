@@ -3,7 +3,7 @@ intrinsic_sdk_protobuf_generate(
   NAME get_taskboard_state_skill
   SOURCES src/get_taskboard_state_skill.proto
   TARGET get_taskboard_state_skill_protos
-  DESCRIPTOR_SET_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill.desc"
+  DESCRIPTOR_SET_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill_protos.desc"
 )
 
 # Generate the skill config file.
@@ -11,7 +11,7 @@ intrinsic_sdk_generate_skill_config(
   TARGET get_taskboard_state_skill_config
   SKILL_NAME get_taskboard_state_skill
   MANIFEST src/get_taskboard_state_skill.manifest.textproto
-  PROTO_DESCRIPTOR_FILE "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill.desc"
+  PROTO_DESCRIPTOR_FILE "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill_protos.desc"
   SKILL_CONFIG_FILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill_config.pbbin"
 )
 
@@ -19,6 +19,7 @@ install(
   FILES
     src/get_taskboard_state_skill.manifest.textproto
     "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill_config.pbbin"
+    "${CMAKE_CURRENT_BINARY_DIR}/get_taskboard_state_skill_protos.desc"
   DESTINATION share/${PROJECT_NAME}
 )
 

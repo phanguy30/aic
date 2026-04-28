@@ -4,12 +4,13 @@ package ai.flowstate;
 
 message ComponentStateProto {
   bool entity_present = 1;
-  string entity_name = 2;
-  double translation = 3;
-  double roll = 4;
-  double pitch = 5;
-  double yaw = 6;
+  double translation = 2;
+  double roll = 3;
+  double pitch = 4;
+  double yaw = 5;
 }
+
+message GetTaskboardStateSkillParams {}
 
 message GetTaskboardStateSkillResult {
   bool success = 1;

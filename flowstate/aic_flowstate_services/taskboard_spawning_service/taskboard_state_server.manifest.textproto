@@ -1,0 +1,30 @@
+metadata {
+  id {
+    package: "ai.flowstate"
+    name: "taskboard_state_server"
+  }
+  vendor {
+    display_name: "Intrinsic"
+  }
+  documentation {
+    description: "ROS 2 state server for taskboard spawning."
+  }
+  display_name: "Taskboard State Server"
+}
+service_def {
+  real_spec {
+    image {
+      archive_filename: "taskboard_state_server.tar"
+    }
+  }
+  sim_spec {
+    image {
+      archive_filename: "taskboard_state_server.tar"
+    }
+  }
+}
+assets {
+  default_configuration_filename: "default_config.binarypb",
+  parameter_descriptor_filename: "parameter-descriptor-set.proto.bin",
+  image_filenames: ["taskboard_state_server.tar"]
+}
