@@ -120,14 +120,15 @@ void AicCameraBridge::ImageCallback(
   // frame_id will be populated later, without the incoming numeric ID prefix
 
   // Populate image metadata
-  ros_image.height = image.height();
-  ros_image.width = image.width();
-  ros_image.encoding = image.encoding();
-  ros_image.is_bigendian = image.is_bigendian();
-  ros_image.step = image.step();
+  data_->ros_image_.height = image.height();
+  data_->ros_image_.width = image.width();
+  data_->ros_image_.encoding = image.encoding();
+  data_->ros_image_.is_bigendian = image.is_bigendian();
+  data_->ros_image_.step = image.step();
 
   // Populate image pixel-block data
-  ros_image.data.assign(image.data().begin(), image.data().end());
+  data_->ros_image_.data.resize(image.data().size());
+  std::copy(image.data().begin(), image.data().end(), data_->ros_image_.data.begin());
 
   const absl::Duration ros_image_creation_duration = absl::Now() - start_time;
 
@@ -146,9 +147,9 @@ void AicCameraBridge::ImageCallback(
   }
 
   sensor_msgs::msg::CameraInfo camera_info;
-  camera_info.header = ros_image.header;
-  camera_info.height = ros_image.height;
-  camera_info.width = ros_image.width;
+  camera_info.header = data_->ros_image_.header;
+  camera_info.height = data_->ros_image_.height;
+  camera_info.width = data_->ros_image_.width;
 
   // Images from the simulation are undistorted, so the distortion
   // parameter vector 'd' will be left as zeros.
@@ -157,9 +158,9 @@ void AicCameraBridge::ImageCallback(
 
   // Populate the intrinsic camera matrix
   camera_info.k[0] = data_->focal_length_x_;
-  camera_info.k[2] = ros_image.width / 2.0;
+  camera_info.k[2] = data_->ros_image_.width / 2.0;
   camera_info.k[4] = data_->focal_length_y_;
-  camera_info.k[5] = ros_image.height / 2.0;
+  camera_info.k[5] = data_->ros_image_.height / 2.0;
   camera_info.k[8] = 1.0;
 
   // Identity rotation matrix, the convention for monocular cameras.
@@ -169,27 +170,27 @@ void AicCameraBridge::ImageCallback(
 
   // Populate the projection matrix following monocular conventions.
   camera_info.p[0] = data_->focal_length_x_;
-  camera_info.p[2] = ros_image.width / 2.0;
+  camera_info.p[2] = data_->ros_image_.width / 2.0;
   camera_info.p[5] = data_->focal_length_y_;
-  camera_info.p[6] = ros_image.height / 2.0;
+  camera_info.p[6] = data_->ros_image_.height / 2.0;
   camera_info.p[10] = 1.0;
 
   // Route based on frame_id substring
   const std::string& frame_id = image.header().frame_id();
   if (frame_id.find("left_camera") != std::string::npos) {
-    ros_image.header.frame_id = "left_camera/optical";
-    camera_info.header.frame_id = ros_image.header.frame_id;
-    data_->left_image_pub_->publish(ros_image);
+    data_->ros_image_.header.frame_id = "left_camera/optical";
+    camera_info.header.frame_id = data_->ros_image_.header.frame_id;
+    data_->left_image_pub_->publish(data_->ros_image_);
     data_->left_camera_info_pub_->publish(camera_info);
   } else if (frame_id.find("center_camera") != std::string::npos) {
-    ros_image.header.frame_id = "center_camera/optical";
-    camera_info.header.frame_id = ros_image.header.frame_id;
-    data_->center_image_pub_->publish(ros_image);
+    data_->ros_image_.header.frame_id = "center_camera/optical";
+    camera_info.header.frame_id = data_->ros_image_.header.frame_id;
+    data_->center_image_pub_->publish(data_->ros_image_);
     data_->center_camera_info_pub_->publish(camera_info);
   } else if (frame_id.find("right_camera") != std::string::npos) {
-    ros_image.header.frame_id = "right_camera/optical";
-    camera_info.header.frame_id = ros_image.header.frame_id;
-    data_->right_image_pub_->publish(ros_image);
+    data_->ros_image_.header.frame_id = "right_camera/optical";
+    camera_info.header.frame_id = data_->ros_image_.header.frame_id;
+    data_->right_image_pub_->publish(data_->ros_image_);
     data_->right_camera_info_pub_->publish(camera_info);
   } else {
     LOG(WARNING) << "Unknown camera frame_id: " << frame_id;
