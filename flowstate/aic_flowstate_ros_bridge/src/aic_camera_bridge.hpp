@@ -63,7 +63,6 @@ class AicCameraBridge : public BridgeInterface {
         center_camera_info_pub_;
     std::shared_ptr<rclcpp::Publisher<sensor_msgs::msg::CameraInfo>>
         right_camera_info_pub_;
-    sensor_msgs::msg::Image ros_image_;
 
     Data();
     ~Data();
