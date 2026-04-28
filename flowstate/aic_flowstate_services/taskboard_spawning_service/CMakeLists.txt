@@ -11,19 +11,19 @@ find_package(rclcpp REQUIRED)
 find_package(aic_flowstate_interface REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-add_executable(taskboard_state_server src/taskboard_state_server.cpp)
-target_include_directories(taskboard_state_server PUBLIC
+add_executable(taskboard_state_server_main src/taskboard_state_server.cpp)
+target_include_directories(taskboard_state_server_main PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(taskboard_state_server
+target_link_libraries(taskboard_state_server_main
   rclcpp::rclcpp
   ${aic_flowstate_interface_TARGETS}
   yaml-cpp
 )
 
 install(TARGETS
-  taskboard_state_server
+  taskboard_state_server_main
   DESTINATION lib/${PROJECT_NAME}
 )
 
