@@ -175,7 +175,7 @@ void AicCameraBridge::ImageCallback(
   camera_info.p[10] = 1.0;
 
   // Route based on frame_id substring
-  const std::string& frame_id = ros_image.header.frame_id;
+  const std::string& frame_id = image.header().frame_id();
   if (frame_id.find("left_camera") != std::string::npos) {
     ros_image.header.frame_id = "left_camera/optical";
     camera_info.header.frame_id = ros_image.header.frame_id;
