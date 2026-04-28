@@ -267,7 +267,7 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& _info,
     if (tracker.found && !tracker.frozen && i + 1 != this->nextCableIndex) {
       auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
           _info.simTime - tracker.foundTime);
-      if (timeSinceFound.count() >= 1) {
+      if (timeSinceFound.count() >= 0.05) {
         this->MakeCableStatic(i, _ecm);
         tracker.frozen = true;
         gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
