@@ -170,6 +170,8 @@ namespace aic_gazebo
     /// \param[in] _ecm Entity Component Manager
     private: void MakeCableDynamic(size_t _cableIndex, gz::sim::EntityComponentManager& _ecm);
 
+
+
     /// \brief Toggle active cable. Done by setting internal vairables to keep
     /// track of the connection link entities of the next cable in the queue
     /// \param[in] _ecm Entity Component Manager

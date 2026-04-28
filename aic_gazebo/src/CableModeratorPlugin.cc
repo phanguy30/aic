@@ -208,18 +208,34 @@ void CableModeratorPlugin::ProcessManualGraspRequests(
   }
 }
 
+
+
 //////////////////////////////////////////////////
 void CableModeratorPlugin::MakeCableStatic(
     size_t _cableIndex,
     gz::sim::EntityComponentManager& _ecm) {
-  auto links = Model(this->cableTrackers[_cableIndex].modelEntity).Links(_ecm);
-  for (const Entity& linkEntity : links) {
-    if ((this->nextCableIndex - 1) == _cableIndex &&
-        (linkEntity == this->cableConnection0LinkEntity ||
-         linkEntity == this->cableConnection1LinkEntity)) {
-      continue;
+  
+  // Skip if this is the cable that was just completed, as its connectors
+  // are already frozen.
+  if (this->nextCableIndex > 0 && (this->nextCableIndex - 1) == _cableIndex) {
+    return;
+  }
+  
+  const auto& config = this->cableConfigs[_cableIndex];
+  const auto cableModelName = Model(this->cableTrackers[_cableIndex].modelEntity).Name(_ecm);
+  
+  Entity connection0 = findLinkInModel(cableModelName, config.connection0LinkName, _ecm);
+  Entity connection1 = findLinkInModel(cableModelName, config.connection1LinkName, _ecm);
+
+  if (connection0 != kNullEntity) {
+    Entity jointEntity = this->MakeStatic(connection0, true, _ecm);
+    if (jointEntity != kNullEntity) {
+      this->cableTrackers[_cableIndex].frozenJoints.push_back(jointEntity);
     }
-    Entity jointEntity = this->MakeStatic(linkEntity, true, _ecm);
+  }
+
+  if (connection1 != kNullEntity) {
+    Entity jointEntity = this->MakeStatic(connection1, true, _ecm);
     if (jointEntity != kNullEntity) {
       this->cableTrackers[_cableIndex].frozenJoints.push_back(jointEntity);
     }
@@ -239,17 +255,27 @@ void CableModeratorPlugin::MakeCableDynamic(
   this->cableTrackers[_cableIndex].frozenJoints.clear();
 
   // Remove the static models
-  auto links = Model(this->cableTrackers[_cableIndex].modelEntity).Links(_ecm);
-  for (const Entity& linkEntity : links) {
-    auto nameComp = _ecm.Component<components::Name>(linkEntity);
-    auto parentComp = _ecm.Component<components::ParentEntity>(linkEntity);
-    auto parentNameComp = _ecm.Component<components::Name>(parentComp->Data());
-    std::string staticEntName = nameComp->Data() + "_" + parentNameComp->Data() + "__static__";
-    Entity staticEntity = _ecm.EntityByComponents(components::Name(staticEntName));
-    if (staticEntity != kNullEntity) {
-      _ecm.RequestRemoveEntity(staticEntity);
+  const auto& config = this->cableConfigs[_cableIndex];
+  const auto cableModelName = Model(this->cableTrackers[_cableIndex].modelEntity).Name(_ecm);
+  
+  Entity connection0 = findLinkInModel(cableModelName, config.connection0LinkName, _ecm);
+  Entity connection1 = findLinkInModel(cableModelName, config.connection1LinkName, _ecm);
+
+  auto removeStaticModel = [&](Entity _link) {
+    if (_link != kNullEntity) {
+      auto nameComp = _ecm.Component<components::Name>(_link);
+      auto parentComp = _ecm.Component<components::ParentEntity>(_link);
+      auto parentNameComp = _ecm.Component<components::Name>(parentComp->Data());
+      std::string staticEntName = nameComp->Data() + "_" + parentNameComp->Data() + "__static__";
+      Entity staticEntity = _ecm.EntityByComponents(components::Name(staticEntName));
+      if (staticEntity != kNullEntity) {
+        _ecm.RequestRemoveEntity(staticEntity);
+      }
     }
-  }
+  };
+
+  removeStaticModel(connection0);
+  removeStaticModel(connection1);
 }
 
 //////////////////////////////////////////////////
@@ -267,7 +293,7 @@ void CableModeratorPlugin::PreUpdate(const gz::sim::UpdateInfo& _info,
     if (tracker.found && !tracker.frozen && i + 1 != this->nextCableIndex) {
       auto timeSinceFound = std::chrono::duration_cast<std::chrono::seconds>(
           _info.simTime - tracker.foundTime);
-      if (timeSinceFound.count() >= 0.05) {
+      if (timeSinceFound.count() >= 0.0) {
         this->MakeCableStatic(i, _ecm);
         tracker.frozen = true;
         gzmsg << "Froze cable " << this->cableConfigs[i].modelName << std::endl;
