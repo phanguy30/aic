@@ -5,9 +5,9 @@
 #include <sstream>
 
 #include "absl/status/statusor.h"
+#include "aic_flowstate_interface/srv/get_taskboard_state.hpp"
 #include "get_taskboard_state_skill.pb.h"
 #include "rclcpp/rclcpp.hpp"
-#include "aic_flowstate_interface/srv/get_taskboard_state.hpp"
 
 namespace {
 class InitRos {
@@ -19,28 +19,36 @@ class InitRos {
 class GetTaskboardStateClientNode : public rclcpp::Node {
  public:
   GetTaskboardStateClientNode() : Node("get_taskboard_state_skill_node") {
-    client_ = this->create_client<aic_flowstate_interface::srv::GetTaskboardState>("get_taskboard_state");
+    client_ =
+        this->create_client<aic_flowstate_interface::srv::GetTaskboardState>(
+            "get_taskboard_state");
   }
 
-  absl::StatusOr<std::shared_ptr<aic_flowstate_interface::srv::GetTaskboardState::Response>> GetState(double timeout_ms) {
+  absl::StatusOr<std::shared_ptr<
+      aic_flowstate_interface::srv::GetTaskboardState::Response>>
+  GetState(double timeout_ms) {
     if (!client_->wait_for_service(std::chrono::seconds(10))) {
-      return absl::UnavailableError("Service 'get_taskboard_state' not available");
+      return absl::UnavailableError(
+          "Service 'get_taskboard_state' not available");
     }
 
-    auto request = std::make_shared<aic_flowstate_interface::srv::GetTaskboardState::Request>();
+    auto request = std::make_shared<
+        aic_flowstate_interface::srv::GetTaskboardState::Request>();
     auto result_future = client_->async_send_request(request);
 
     if (rclcpp::spin_until_future_complete(
             this->get_node_base_interface(), result_future,
             std::chrono::milliseconds(static_cast<int>(timeout_ms))) !=
         rclcpp::FutureReturnCode::SUCCESS) {
-      return absl::DeadlineExceededError("Timed out waiting for service response.");
+      return absl::DeadlineExceededError(
+          "Timed out waiting for service response.");
     }
 
     return result_future.get();
   }
 
-  rclcpp::Client<aic_flowstate_interface::srv::GetTaskboardState>::SharedPtr client_;
+  rclcpp::Client<aic_flowstate_interface::srv::GetTaskboardState>::SharedPtr
+      client_;
 };
 
 InitRos init;
@@ -58,8 +66,9 @@ GetTaskboardStateSkill::CreateSkill() {
 }
 
 absl::StatusOr<std::unique_ptr<google::protobuf::Message>>
-GetTaskboardStateSkill::Preview(const intrinsic::skills::PreviewRequest& /*request*/,
-                          intrinsic::skills::PreviewContext& /*context*/) {
+GetTaskboardStateSkill::Preview(
+    const intrinsic::skills::PreviewRequest& /*request*/,
+    intrinsic::skills::PreviewContext& /*context*/) {
   return absl::UnimplementedError("Skill has not implemented `Preview`.");
 }
 
@@ -68,11 +77,12 @@ GetTaskboardStateSkill::Preview(const intrinsic::skills::PreviewRequest& /*reque
 //==============================================================================
 
 absl::StatusOr<std::unique_ptr<google::protobuf::Message>>
-GetTaskboardStateSkill::Execute(const intrinsic::skills::ExecuteRequest& request,
-                          intrinsic::skills::ExecuteContext& /*context*/) {
+GetTaskboardStateSkill::Execute(
+    const intrinsic::skills::ExecuteRequest& request,
+    intrinsic::skills::ExecuteContext& /*context*/) {
   RCLCPP_INFO(client_node_.get_logger(), "GetTaskboardStateSkill::Execute");
 
-  auto status_or_response = client_node_.GetState(5000.0); // 5 seconds timeout
+  auto status_or_response = client_node_.GetState(5000.0);  // 5 seconds timeout
 
   if (!status_or_response.ok()) {
     return status_or_response.status();

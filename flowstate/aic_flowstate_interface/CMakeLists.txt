@@ -11,7 +11,6 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/UpdateComponent.srv"
-  "srv/SpawnBaseEntity.srv"
   "srv/GetTaskboardState.srv"
   "msg/ComponentState.msg"
 )
