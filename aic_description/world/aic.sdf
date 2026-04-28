@@ -258,7 +258,7 @@
       <static>true</static>
     </include>
 
-    <model name="cable_1">
+    <model name="cable_0">
       <static>false</static>
       <pose>0.0090312138199806213 -0.093737214803695679 1.2267292737960815 -2.5275254956976134 -1.3707510052403902 2.6911430280154049</pose>
       <static>false</static>
@@ -268,7 +268,7 @@
       </include>
     </model>
 
-    <model name="cable_2">
+    <model name="cable_1">
       <static>false</static>
       <pose>0.0090312138199806213 -0.14 1.2267292737960815 -2.5275254956976134 -1.3707510052403902 2.6911430280154049</pose>
       <static>false</static>
@@ -278,7 +278,7 @@
       </include>
     </model>
 
-    <model name="cable_3">
+    <model name="cable_2">
       <static>false</static>
       <pose>0.0090312138199806213 -0.18 1.2267292737960815 -2.5275254956976134 -1.3707510052403902 2.6911430280154049</pose>
       <static>false</static>
@@ -288,7 +288,7 @@
       </include>
     </model>
 
-    <model name="cable_4">
+    <model name="cable_3">
       <static>false</static>
       <pose>0.0090312138199806213 -0.22 1.2267292737960815 -2.5275254956976134 -1.3707510052403902 2.6911430280154049</pose>
       <static>false</static>
@@ -297,6 +297,18 @@
         <uri>model://sfp_sc_cable_phase_1</uri>
       </include>
     </model>
+
+    <model name="cable_4">
+      <static>false</static>
+      <pose>0.0090312138199806213 -0.26 1.2267292737960815 -2.5275254956976134 -1.3707510052403902 2.6911430280154049</pose>
+      <static>false</static>
+      <self_collide>true</self_collide>
+      <include merge="true">
+        <uri>model://sfp_sc_cable_phase_1</uri>
+      </include>
+    </model>
+
+
 
 <!--
     <model name="cable_1">
