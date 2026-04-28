@@ -11,7 +11,7 @@
           <pose>0 0 0.006 0 0 0</pose>
           <geometry>
             <capsule>
-              <length>0.032</length>
+              <length>0.036</length>
               <radius>0.002</radius>
             </capsule>
           </geometry>
