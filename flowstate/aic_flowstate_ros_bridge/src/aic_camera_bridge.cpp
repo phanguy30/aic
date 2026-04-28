@@ -112,11 +112,10 @@ bool AicCameraBridge::initialize(
 void AicCameraBridge::ImageCallback(
     const sensor_msgs::msg::pb::jazzy::Image& image) {
   const absl::Time start_time = absl::Now();
-  sensor_msgs::msg::Image ros_image;
 
-  // Populate header
-  ros_image.header.stamp.sec = image.header().stamp().sec();
-  ros_image.header.stamp.nanosec = image.header().stamp().nanosec();
+  // Populate timestamp
+  data_->ros_image_.header.stamp.sec = image.header().stamp().sec();
+  data_->ros_image_.header.stamp.nanosec = image.header().stamp().nanosec();
   // frame_id will be populated later, without the incoming numeric ID prefix
 
   // Populate image metadata
@@ -132,9 +131,12 @@ void AicCameraBridge::ImageCallback(
 
   const absl::Duration ros_image_creation_duration = absl::Now() - start_time;
 
+  // Every 10 seconds (3 cameras at 20 Hz = 60 images/sec), check to see if
+  // the focal length needs to be queried again, in case it failed on startup
+  // due to random container startup ordering.
   static int callback_count = 0;
   callback_count++;
-  if (callback_count % 300 == 0) {
+  if (callback_count % 600 == 0) {
     if (data_->focal_length_x_ == 0.0) {
       LOG(INFO) << "Focal length still zero. Retrying search.";
       FindFocalLength();
