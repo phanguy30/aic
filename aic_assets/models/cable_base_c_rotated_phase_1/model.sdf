@@ -93,10 +93,10 @@
       <collision name='link_1_collision'>
         <pose>0 0 0.0060000000000000001 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.035999999999999997</length>
+          <capsule>
+            <length>0.032</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -113,10 +113,10 @@
       <visual name='link_1_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -129,43 +129,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_1_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_1_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_2'>
@@ -185,10 +149,10 @@
       <collision name='link_2_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -205,10 +169,10 @@
       <visual name='link_2_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -221,43 +185,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_2_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_2_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_3'>
@@ -277,10 +205,10 @@
       <collision name='link_3_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -297,10 +225,10 @@
       <visual name='link_3_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -313,43 +241,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_3_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_3_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_4'>
@@ -369,10 +261,10 @@
       <collision name='link_4_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -389,10 +281,10 @@
       <visual name='link_4_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -405,43 +297,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_4_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_4_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_5'>
@@ -461,10 +317,10 @@
       <collision name='link_5_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -481,10 +337,10 @@
       <visual name='link_5_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -497,43 +353,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_5_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_5_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_6'>
@@ -553,10 +373,10 @@
       <collision name='link_6_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -573,10 +393,10 @@
       <visual name='link_6_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -589,43 +409,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_6_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_6_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_7'>
@@ -645,10 +429,10 @@
       <collision name='link_7_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -665,10 +449,10 @@
       <visual name='link_7_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -681,43 +465,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_7_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_7_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_8'>
@@ -737,10 +485,10 @@
       <collision name='link_8_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -757,10 +505,10 @@
       <visual name='link_8_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -829,10 +577,10 @@
       <collision name='link_9_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -849,10 +597,10 @@
       <visual name='link_9_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -921,10 +669,10 @@
       <collision name='link_10_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -941,10 +689,10 @@
       <visual name='link_10_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1013,10 +761,10 @@
       <collision name='link_11_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1033,10 +781,10 @@
       <visual name='link_11_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1105,10 +853,10 @@
       <collision name='link_12_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1125,10 +873,10 @@
       <visual name='link_12_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1197,10 +945,10 @@
       <collision name='link_13_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1217,10 +965,10 @@
       <visual name='link_13_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1289,10 +1037,10 @@
       <collision name='link_14_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1309,10 +1057,10 @@
       <visual name='link_14_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1381,10 +1129,10 @@
       <collision name='link_15_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1401,10 +1149,10 @@
       <visual name='link_15_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1473,10 +1221,10 @@
       <collision name='link_16_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1493,10 +1241,10 @@
       <visual name='link_16_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1565,10 +1313,10 @@
       <collision name='link_17_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1585,10 +1333,10 @@
       <visual name='link_17_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1657,10 +1405,10 @@
       <collision name='link_18_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1677,10 +1425,10 @@
       <visual name='link_18_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1749,10 +1497,10 @@
       <collision name='link_19_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1769,10 +1517,10 @@
       <visual name='link_19_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
@@ -1841,10 +1589,10 @@
       <collision name='link_20_collision'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <surface>
           <friction>
@@ -1861,10 +1609,10 @@
       <visual name='link_20_vis'>
         <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <cylinder>
-            <length>0.048000000000000001</length>
+          <capsule>
+            <length>0.044</length>
             <radius>0.002</radius>
-          </cylinder>
+          </capsule>
         </geometry>
         <material>
           <diffuse>1 0.219999999 0 1</diffuse>
