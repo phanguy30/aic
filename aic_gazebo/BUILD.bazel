@@ -1,6 +1,4 @@
 load("@rules_cc//cc:cc_library.bzl", "cc_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@gz-msgs//tools:gz_msgs_generate.bzl", "gz_proto_library")
 load("@gz-sim//bazel:gz_sim_system_libraries.bzl", "gz_sim_system_libraries")
 
 package(default_visibility = ["//visibility:public"])
