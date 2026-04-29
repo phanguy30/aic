@@ -10,6 +10,7 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>aic_task_interfaces</depend>
+  <depend>aic_flowstate_interface</depend>
   <depend>intrinsic_sdk_cmake</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>

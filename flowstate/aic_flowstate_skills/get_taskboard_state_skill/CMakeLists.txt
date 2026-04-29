@@ -1,3 +1,5 @@
+find_package(aic_flowstate_interface REQUIRED)
+
 # Generate the skill's protobuf files, protobuf library, and descriptor set file.
 intrinsic_sdk_protobuf_generate(
   NAME get_taskboard_state_skill
@@ -40,7 +42,6 @@ target_include_directories(get_taskboard_state_skill_main
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}/src
-  /usr/local/google/home/kbalasundar/aic_ws/install/aic_flowstate_interface/include/aic_flowstate_interface/
 )
 
 target_link_libraries(get_taskboard_state_skill_main
@@ -48,7 +49,6 @@ target_link_libraries(get_taskboard_state_skill_main
   get_taskboard_state_skill_protos
   rclcpp::rclcpp
   ${aic_flowstate_interface_TARGETS}
-  /usr/local/google/home/kbalasundar/aic_ws/install/aic_flowstate_interface/lib/libaic_flowstate_interface__rosidl_typesupport_cpp.so
 )
 
 add_dependencies(get_taskboard_state_skill_main get_taskboard_state_skill_config)

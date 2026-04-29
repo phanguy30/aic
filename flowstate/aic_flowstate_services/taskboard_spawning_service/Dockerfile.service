@@ -1,0 +1,37 @@
+FROM docker.io/library/ros:kilted-ros-base AS build
+
+# Add base dependencies
+COPY src/aic/flowstate/aic_flowstate_interface /ws_aic/src/aic/aic_flowstate_interface
+COPY src/aic/flowstate/aic_flowstate_services/taskboard_spawning_service /ws_aic/src/aic/taskboard_spawning_service
+
+# Install dependencies
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt update && apt upgrade -y && \
+  apt install ros-kilted-rmw-zenoh-cpp -y && \
+  cd /ws_aic && \
+  rosdep install --from-path src --ignore-src --rosdistro kilted -yr
+
+# Build the workspace
+SHELL ["/bin/bash", "-c"]
+RUN --mount=type=cache,target=/ws_aic/build,sharing=locked \
+  cd /ws_aic \
+  && . /opt/ros/kilted/setup.bash \
+  && colcon build --packages-up-to taskboard_spawning_service --cmake-args -DCMAKE_BUILD_TYPE=Release --merge-install --executor sequential \
+  && rm -rf /ws_aic/log /ws_aic/src
+
+COPY --chmod=755 <<"EOF" /entrypoint.sh
+#!/bin/bash
+set -e
+
+. /ws_aic/install/setup.bash
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+export ZENOH_ROUTER_CHECK_ATTEMPTS=-1
+export AIC_ROUTER_ADDR='zenoh-router.app-intrinsic-base.svc.cluster.local:7447'
+ZENOH_CONFIG_OVERRIDE='connect/endpoints=["tcp/'"$AIC_ROUTER_ADDR"'"]'
+ZENOH_CONFIG_OVERRIDE+=';transport/shared_memory/enabled=false'
+export ZENOH_CONFIG_OVERRIDE
+
+exec ros2 run taskboard_spawning_service taskboard_state_server_main
+EOF
+
+ENTRYPOINT ["/entrypoint.sh"]
