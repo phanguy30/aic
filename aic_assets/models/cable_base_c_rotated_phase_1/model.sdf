@@ -521,43 +521,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_8_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_8_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_9'>
@@ -613,43 +577,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_9_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_9_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_10'>
@@ -705,43 +633,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_10_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_10_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_11'>
@@ -797,43 +689,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_11_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_11_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_12'>
@@ -889,43 +745,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_12_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_12_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_13'>
@@ -981,43 +801,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_13_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_13_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_14'>
@@ -1073,43 +857,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_14_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_14_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_15'>
@@ -1165,43 +913,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_15_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_15_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_16'>
@@ -1257,43 +969,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_16_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_16_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_17'>
@@ -1349,43 +1025,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_17_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_17_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_18'>
@@ -1441,43 +1081,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_18_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_18_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_19'>
@@ -1533,43 +1137,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_19_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_19_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <link name='link_20'>
@@ -1625,43 +1193,7 @@
           </pbr>
         </material>
       </visual>
-      <collision name='sphere_20_collision'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <surface>
-          <friction>
-            <torsional>
-              <coefficient>0.050000000000000003</coefficient>
-            </torsional>
-            <bullet>
-              <friction>0.050000000000000003</friction>
-              <friction2>0.050000000000000003</friction2>
-            </bullet>
-          </friction>
-        </surface>
-      </collision>
-      <visual name='sphere_20_vis'>
-        <pose>0 0 0.024 0 0 0</pose>
-        <geometry>
-          <sphere>
-            <radius>0.002</radius>
-          </sphere>
-        </geometry>
-        <material>
-          <diffuse>1 0.219999999 0 1</diffuse>
-          <specular>0.5 0.5 0.5 1</specular>
-          <pbr>
-            <metal>
-              <roughness>0.01</roughness>
-              <metalness>0.01</metalness>
-            </metal>
-          </pbr>
-        </material>
-      </visual>
+
       <enable_wind>false</enable_wind>
     </link>
     <joint name='joint_1' type='ball'>
