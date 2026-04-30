@@ -84,27 +84,10 @@ class CheatCode(Policy):
             port_transform.rotation.y,
             port_transform.rotation.z,
         )
-        plug_tf_stamped = self._parent_node._tf_buffer.lookup_transform(
-            "base_link",
-            f"{self._task.cable_name}/{self._task.plug_name}_link",
-            Time(),
-        )
-        q_plug = (
-            plug_tf_stamped.transform.rotation.w,
-            plug_tf_stamped.transform.rotation.x,
-            plug_tf_stamped.transform.rotation.y,
-            plug_tf_stamped.transform.rotation.z,
-        )
-        q_plug_inv = (
-            -q_plug[0],
-            q_plug[1],
-            q_plug[2],
-            q_plug[3],
-        )
-        q_diff = quaternion_multiply(q_port, q_plug_inv)
+        q_gripper_target = q_port
         gripper_tf_stamped = self._parent_node._tf_buffer.lookup_transform(
-            "base_link",
-            "gripper/tcp",
+            "robot/robot/base_link",
+            "robot/robot/arm_link_tip",
             Time(),
         )
         q_gripper = (
@@ -113,7 +96,6 @@ class CheatCode(Policy):
             gripper_tf_stamped.transform.rotation.y,
             gripper_tf_stamped.transform.rotation.z,
         )
-        q_gripper_target = quaternion_multiply(q_diff, q_gripper)
         q_gripper_slerp = quaternion_slerp(q_gripper, q_gripper_target, slerp_fraction)
 
         gripper_xyz = (
@@ -125,19 +107,10 @@ class CheatCode(Policy):
             port_transform.translation.x,
             port_transform.translation.y,
         )
-        plug_xyz = (
-            plug_tf_stamped.transform.translation.x,
-            plug_tf_stamped.transform.translation.y,
-            plug_tf_stamped.transform.translation.z,
-        )
-        plug_tip_gripper_offset = (
-            gripper_xyz[0] - plug_xyz[0],
-            gripper_xyz[1] - plug_xyz[1],
-            gripper_xyz[2] - plug_xyz[2],
-        )
+        plug_tip_gripper_offset = (0.0, 0.0, 0.0)
 
-        tip_x_error = port_xy[0] - plug_xyz[0]
-        tip_y_error = port_xy[1] - plug_xyz[1]
+        tip_x_error = port_xy[0] - gripper_xyz[0]
+        tip_y_error = port_xy[1] - gripper_xyz[1]
 
         if reset_xy_integrator:
             self._tip_x_error_integrator = 0.0
@@ -159,10 +132,11 @@ class CheatCode(Policy):
         )
 
         i_gain = 0.15
+        gripper_length_offset = 0.06 # Adjust this to avoid collision
 
-        target_x = port_xy[0] + i_gain * self._tip_x_error_integrator
-        target_y = port_xy[1] + i_gain * self._tip_y_error_integrator
-        target_z = port_transform.translation.z + z_offset - plug_tip_gripper_offset[2]
+        target_x = port_xy[0]
+        target_y = port_xy[1]
+        target_z = port_transform.translation.z + z_offset - plug_tip_gripper_offset[2] + gripper_length_offset
 
         blend_xyz = (
             position_fraction * target_x + (1.0 - position_fraction) * gripper_xyz[0],
@@ -194,18 +168,19 @@ class CheatCode(Policy):
         self.get_logger().info(f"CheatCode.insert_cable() task: {task}")
         self._task = task
 
-        port_frame = f"task_board/{task.target_module_name}/{task.port_name}_link"
-        cable_tip_frame = f"{task.cable_name}/{task.plug_name}_link"
+        target_base = task.target_module_name.rstrip('0123456789_')
+        port_frame = f"aic_{target_base}/aic_{target_base}/{task.port_name}_link"
+        cable_tip_frame = f"aic_{task.plug_type}_module/aic_{task.plug_type}_module/{task.plug_name}_link"
 
         # Wait for both the port and cable tip TFs to become available.
         # These come via ground_truth and may not be immediate.
         for frame in [port_frame, cable_tip_frame]:
-            if not self._wait_for_tf("base_link", frame):
+            if not self._wait_for_tf("robot/robot/base_link", frame):
                 return False
 
         try:
             port_tf_stamped = self._parent_node._tf_buffer.lookup_transform(
-                "base_link",
+                "robot/robot/base_link",
                 port_frame,
                 Time(),
             )
@@ -213,7 +188,6 @@ class CheatCode(Policy):
             self.get_logger().error(f"Could not look up port transform: {ex}")
             return False
         port_transform = port_tf_stamped.transform
-
         z_offset = 0.2
 
         # Over five seconds, smoothly interpolate from the current position to
