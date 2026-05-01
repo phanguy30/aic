@@ -55,6 +55,10 @@ class GenerateData(Policy):
         self._image_count = 0
         self._images_since_respawn = 0
         
+        # Ensure directories exist
+        os.makedirs(self._images_path, exist_ok=True)
+        os.makedirs(self._labels_path, exist_ok=True)
+        
         if HAS_SERVICES:
             self._cli_expand = self._parent_node.create_client(ExpandXacro, '/expand_xacro')
             self._cli_delete = self._parent_node.create_client(DeleteEntity, '/gz_server/delete_entity')
@@ -286,6 +290,20 @@ class GenerateData(Policy):
             if not self._wait_for_tf(camera_frame, port_frame, timeout_sec=2.0):
                 continue
             
+            # --- Define constants needed inside the port projection loop ---
+            # Physical size of port in meters (SFP port is ~14mm x 10mm)
+            corners_local = np.array([
+                [-0.007, -0.005, 0.0],
+                [ 0.007, -0.005, 0.0],
+                [ 0.007,  0.005, 0.0],
+                [-0.007,  0.005, 0.0],
+            ])
+
+            # Camera intrinsic matrix from camera_info
+            K = np.array(obs.center_camera_info.k).reshape(3, 3)
+            width = float(obs.center_camera_info.width)
+            height = float(obs.center_camera_info.height)
+
             # Iterate through all possible ports on the board
             yolo_lines = []
             
