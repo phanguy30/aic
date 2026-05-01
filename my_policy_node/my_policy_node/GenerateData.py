@@ -46,7 +46,10 @@ except ImportError:
 class GenerateData(Policy):
     def __init__(self, parent_node):
         super().__init__(parent_node)
-        self._dataset_path = "/Users/peter/Documents/MDS_UBC/My_Projects/aic/yolo_dataset"
+        
+        # Dynamic paths based on home directory
+        home_dir = os.path.expanduser("~")
+        self._dataset_path = os.path.join(home_dir, "aic", "yolo_dataset")
         self._images_path = os.path.join(self._dataset_path, "images")
         self._labels_path = os.path.join(self._dataset_path, "labels")
         self._image_count = 0
