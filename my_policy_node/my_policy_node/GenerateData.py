@@ -42,16 +42,17 @@ try:
 except ImportError:
     HAS_SERVICES = False
 
+HOME_DIR = os.path.expanduser("~")
+SAVE_PATH = os.path.join(HOME_DIR, "aic_dataset", "aic_dataset1")
+TARGET_IMAGE_COUNT = 1000
 
 class GenerateData(Policy):
     def __init__(self, parent_node):
         super().__init__(parent_node)
         
         # Dynamic paths based on home directory
-        home_dir = os.path.expanduser("~")
-        self._dataset_path = os.path.join(home_dir, "aic", "yolo_dataset")
-        self._images_path = os.path.join(self._dataset_path, "images")
-        self._labels_path = os.path.join(self._dataset_path, "labels")
+        self._images_path = os.path.join(SAVE_PATH, "images")
+        self._labels_path = os.path.join(SAVE_PATH, "labels")
         self._image_count = 0
         self._images_since_respawn = 0
         
@@ -254,8 +255,8 @@ class GenerateData(Policy):
         ]
         possible_ports = [f"port_{i}_link" for i in range(5)] + [f"sfp_port_{i}_link" for i in range(5)] + [f"sc_port_{i}_link" for i in range(5)]
         
-        # Loop indefinitely to collect data
-        while True:
+        # Loop until target image count is reached
+        while self._image_count < TARGET_IMAGE_COUNT:
             # Randomize board every 25 images
             if self._images_since_respawn >= 25:
                 self.randomize_board()
@@ -286,7 +287,7 @@ class GenerateData(Policy):
             if obs is None:
                 continue
 
-            camera_frame = obs.center_camera_info.header.frame_id
+            camera_frame = obs.center_camera_info.header.frame_id.replace("sensor_link", "optical")
             if not self._wait_for_tf(camera_frame, port_frame, timeout_sec=2.0):
                 continue
             
@@ -381,3 +382,6 @@ class GenerateData(Policy):
             self.get_logger().info(f"Saved generated image {self._image_count:05d} with {len(yolo_lines)} labeled ports.")
             self._image_count += 1
             self._images_since_respawn += 1
+
+        self.get_logger().info(f"Successfully generated {TARGET_IMAGE_COUNT} images! Exiting policy.")
+        return True
